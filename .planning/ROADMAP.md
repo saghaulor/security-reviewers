@@ -1,0 +1,112 @@
+# Roadmap: security-reviewer
+
+## Overview
+
+Six phases that mirror HAND_OFF.md §6 exactly. The journey: scaffold the repo with two parallel Go modules (`claude-security-hooks` and `opengrep-mcp`); build the hooks binary with all 51 per-agent assertion check predicates and their unit-test suite (Phase 2's exit criterion); author the six per-stack agent definition files and wire them to the hooks via `.claude/settings.json`; ship the dual-engine MCP scanner server with its OpenGrep container; converge the two modules at an end-to-end smoke test against a deliberately vulnerable Go service containing SQLi + authz bypass + OAuth scope-tampering bugs (all three flagged with non-ambiguous verdicts is Phase 5's exit criterion); finish with top-level + per-component READMEs and a `CONTRIBUTING.md`. v1 ships Go-only per D17.
+
+## Phases
+
+**Phase Numbering:**
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+- [ ] **Phase 1: Repo scaffold** — Two-module Go monorepo with `.claude/` skeleton, gitignore, license, top-level README stub
+- [ ] **Phase 2: claude-security-hooks binary** — Static Go validator binary; per-agent schema structs + invariant predicates + unit tests; 51-assertion test suite passes
+- [ ] **Phase 3: Agent definitions + hook registration** — Six `.claude/agents/*.md` files + `.claude/settings.json` hook registrations + `/security-review` slash command
+- [ ] **Phase 4: opengrep-mcp server + OpenGrep container** — MCP server with `scan_with_rule`/`scan_directory`/`get_ast`; tier-dispatched containerized scanners
+- [ ] **Phase 5: End-to-end smoke test** — `examples/sample-vulnerable-service/` with 3 planted bugs; full review workflow runs; all 3 bugs flagged non-ambiguously
+- [ ] **Phase 6: Documentation** — Top-level README + per-component READMEs + `CONTRIBUTING.md`
+
+## Phase Details
+
+### Phase 1: Repo scaffold
+**Goal**: A two-module Go monorepo exists with the `.claude/` directory skeleton, ready for hook and agent files. Both modules build empty (no functionality yet) under `CGO_ENABLED=0`.
+**Depends on**: Nothing (first phase)
+**Requirements**: (none — pre-implementation support phase)
+**Success Criteria** (what must be TRUE):
+  1. Two Go modules exist: `claude-security-hooks/go.mod` and `opengrep-mcp/go.mod`, each with a working `cmd/<name>/main.go` that builds with `CGO_ENABLED=0 go build` and exits 0 when run with no args.
+  2. `.claude/agents/` and `.claude/hooks/bin/` and `.claude/security-invariants/` directories exist (may be empty placeholders with `.gitkeep`).
+  3. `.gitignore` excludes `bin/`, `*.test`, `.idea/`, `.vscode/`, scanner container output dirs (`graphify-out/`, `review-report.json`, etc.).
+  4. `LICENSE` file and stub top-level `README.md` (placeholder title + one-paragraph description) are committed.
+  5. First commit is on the trunk branch with message matching the HAND_OFF.md §6 convention (`scaffold: initial project structure`).
+**Plans**: TBD
+
+### Phase 2: claude-security-hooks Go binary
+**Goal**: A static `claude-security-hooks` binary exists at `claude-security-hooks/bin/claude-security-hooks` that implements `preflight`, `validate`, and `inject-context` subcommands and validates every specialist agent's JSON verdict against the 51 per-agent assertion check predicates. The Go unit-test suite for those predicates passes.
+**Depends on**: Phase 1
+**Requirements**: REQ-hooks-H1, REQ-hooks-H2, REQ-hooks-H3, REQ-hooks-H4, REQ-hooks-H5, REQ-hooks-H6, REQ-hooks-H7, REQ-cartographer-A1, REQ-cartographer-A2, REQ-cartographer-A3, REQ-cartographer-A4, REQ-cartographer-A5, REQ-cartographer-A6, REQ-cartographer-A7, REQ-cartographer-A8, REQ-cartographer-A9, REQ-cartographer-A10, REQ-cartographer-A11, REQ-taint-T1, REQ-taint-T2, REQ-taint-T3, REQ-taint-T4, REQ-taint-T5, REQ-taint-T6, REQ-taint-T7, REQ-taint-T8, REQ-taint-T9, REQ-taint-T10, REQ-taint-T11, REQ-authz-AZ1, REQ-authz-AZ2, REQ-authz-AZ3, REQ-authz-AZ4, REQ-authz-AZ5, REQ-authz-AZ6, REQ-oauth-OA1, REQ-oauth-OA2, REQ-oauth-OA3, REQ-oauth-OA4, REQ-oauth-OA5, REQ-oauth-OA6, REQ-oauth-OA7, REQ-invariant-IC1, REQ-invariant-IC2, REQ-invariant-IC3, REQ-invariant-IC4, REQ-synthesis-S1, REQ-synthesis-S2, REQ-synthesis-S3, REQ-synthesis-S4, REQ-synthesis-S5, REQ-synthesis-S6
+**First-day work item (Q9 from HAND_OFF §5)**: Verify the current Claude Sonnet model identifier against https://docs.claude.com before encoding it into any agent frontmatter or test fixture. Default is `claude-sonnet-4-6`; confirm or update.
+**Success Criteria** (what must be TRUE):
+  1. `CGO_ENABLED=0 go build -o bin/claude-security-hooks ./cmd/claude-security-hooks` from inside `claude-security-hooks/` produces a single static binary with no dynamic library dependencies (verified by `ldd` showing "not a dynamic executable" or equivalent).
+  2. `go test ./...` from inside `claude-security-hooks/` passes; every check predicate corresponding to assertions A1–A11, T1–T11, AZ1–AZ6, OA1–OA7, IC1–IC4, S1–S6 has at least one passing unit test (the 51-assertion unit-test suite — Phase 2's primary exit criterion).
+  3. The compiled binary exits 0 with no stdout when given a `PostToolUse` event JSON whose `tool_input.subagent_type` is NOT in the security agent set (REQ-hooks-H3 verified end-to-end).
+  4. The compiled binary emits exactly one `{"decision":"block","reason":"..."}` JSON object and exits 0 when given a `PostToolUse` event whose `tool_response.content` is malformed JSON (REQ-hooks-H7 verified end-to-end).
+  5. The core validator path imports only Go stdlib (`go list -deps ./internal/invariants/... ./internal/schema/...` shows no external module paths); test framework deps confined to `_test.go` files (REQ-hooks-H5).
+**Plans**: TBD
+
+### Phase 3: Agent definitions + hook registration
+**Goal**: Six agent definition files exist under `.claude/agents/` conforming to the common prompt-shape contract, `.claude/settings.json` registers the three hook events against `claude-security-hooks`, and a `/security-review` slash command is in place to drive the workflow. The hooks binary from Phase 2 validates these agent outputs at runtime without needing additional configuration.
+**Depends on**: Phase 2
+**Requirements**: REQ-agents-prompt-shape
+**First-day work item (Q1 from HAND_OFF §5)**: Verify the exact Graphify MCP tool schemas/names by running `python -m graphify.serve --help` and probing the MCP handshake. Update the `go-cartographer` allowlist if names differ from `{query_graph, get_node, get_neighbors, shortest_path}`.
+**Success Criteria** (what must be TRUE):
+  1. Six files exist: `.claude/agents/go-cartographer.md`, `.claude/agents/go-taint-tracer.md`, `.claude/agents/go-authz-tracer.md`, `.claude/agents/go-oauth-auditor.md`, `.claude/agents/invariant-checker.md`, `.claude/agents/synthesis.md`. Each has YAML frontmatter declaring `name`, `description`, `model`, `tools` (and `allowed_commands` where applicable) per CON-tool-allowlists, and a body containing the six-section structure required by REQ-agents-prompt-shape.
+  2. The `go-taint-tracer.md` body embeds the §8.2 Go source/sink/sanitizer catalog verbatim AND the §3.2.2 OAuth source/sink table; the `go-oauth-auditor.md` body embeds the §8.3 checklist taxonomy with stable IDs.
+  3. `.claude/settings.json` registers three hooks per CON-hook-registration: `PreToolUse` matcher `Task` → `claude-security-hooks preflight` (5s timeout); `PostToolUse` matcher `Task` → `claude-security-hooks validate` (15s timeout); `SubagentStart` matcher `go-taint-tracer|go-authz-tracer|go-oauth-auditor|go-cartographer|invariant-checker|synthesis` → `claude-security-hooks inject-context` (5s timeout). `SubagentStop` is NOT registered (D5).
+  4. A `/security-review` slash command definition exists (location and shape per Claude Code slash-command convention) that drives the full review workflow: pre-pass artifacts → cartographer → tracer fan-out → synthesis.
+  5. No tracer agent frontmatter contains `Grep`, `Bash`, `Edit`, or `Write` in its `tools:` list (D12 negative check, automatable via grep over the agent files at CI time).
+**Plans**: TBD
+**UI hint**: no (this phase produces config and prompt files only; no end-user UI surface)
+
+### Phase 4: opengrep-mcp server + OpenGrep container
+**Goal**: A static `opengrep-mcp` binary exists that exposes a single MCP server with three tools (`scan_with_rule`, `scan_directory`, `get_ast`), dispatches to the correct containerized engine (Semgrep Pro / OpenGrep intrafile / OpenGrep CE) via a `tier` parameter, mounts workspaces read-only, kills containers on timeout, and never logs Pro tokens. The OpenGrep container image is buildable from the repo Dockerfile.
+**Depends on**: Phase 1 (parallel with Phases 2–3; converges into Phase 5)
+**Requirements**: REQ-mcp-O1, REQ-mcp-O2, REQ-mcp-O3, REQ-mcp-O4, REQ-mcp-O5, REQ-mcp-O6, REQ-mcp-O7, REQ-mcp-O8
+**First-day work item (Q4 from HAND_OFF §5)**: Pin a specific OpenGrep release tag and verify the build commands in the §3.9 Dockerfile sketch against the upstream README at https://github.com/opengrep/opengrep. The §3.9 sketch is incomplete.
+**Success Criteria** (what must be TRUE):
+  1. `CGO_ENABLED=0 go build -o bin/opengrep-mcp ./cmd/opengrep-mcp` from inside `opengrep-mcp/` produces a working static binary (REQ-mcp-O1) using `github.com/modelcontextprotocol/go-sdk` and `github.com/docker/docker/client`.
+  2. An MCP client probing the server's tool list receives exactly three registrations — `scan_with_rule`, `scan_directory`, `get_ast` — each with a JSON Schema validating against the MCP spec (REQ-mcp-O2). Calling `scan_with_rule` with `tier: "bogus"` returns a structured error, not a panic (REQ-mcp-O3).
+  3. The OpenGrep Dockerfile in the repo builds successfully against a pinned upstream tag (Q4 resolved); first invocation of `scan_with_rule` with the CE tier pulls and caches the container image locally (REQ-mcp-O4); the container mount inspector (`docker inspect`) shows `/src` mounted with `ro` flag (REQ-mcp-O5).
+  4. An integration test that requests `timeout_seconds: 1` against a deliberately slow rule kills the container and returns a partial-results error (REQ-mcp-O6); a separate test confirms server output uses the normalized `internal/schema/findings.go` shape regardless of which engine produced raw findings (REQ-mcp-O7).
+  5. Running the server with `SEMGREP_APP_TOKEN=test-secret-do-not-log` in the environment and grepping the server's stdout/stderr output across a full Pro-tier scan invocation produces zero matches for `test-secret-do-not-log` (REQ-mcp-O8).
+**Plans**: TBD
+
+### Phase 5: End-to-end smoke test
+**Goal**: `examples/sample-vulnerable-service/` exists as a small Go HTTP service containing exactly three planted security bugs — a SQL injection, an authorization bypass, and an OAuth scope-tampering vulnerability — and running the full `/security-review` workflow against it produces a `review-report.json` whose `findings` array contains all three bugs with non-ambiguous verdicts (`exploitable`, not `ambiguous` or `unverifiable`).
+**Depends on**: Phase 2 (hooks binary), Phase 3 (agent definitions + slash command), Phase 4 (opengrep-mcp + OpenGrep container)
+**Requirements**: (none from the 61-REQ set — the exit criterion is the 3-bug detection, which is a system-level integration property rather than a per-agent assertion)
+**Success Criteria** (what must be TRUE):
+  1. `examples/sample-vulnerable-service/` is a buildable Go HTTP service (`go build ./...` succeeds) that includes (a) at least one handler executing a raw SQL query with user-controlled input concatenated into the query string, (b) at least one route whose handler performs a sensitive action without invoking a blocking authz primitive, and (c) at least one OAuth consent flow where the granted scopes are read from the consent-form POST body rather than from the original authorization request (the motivating bug from HAND_OFF §1).
+  2. Pre-pass artifacts produced cleanly: `graphify build` against `examples/sample-vulnerable-service/` produces `graphify-out/graph.json` without errors; `govulncheck -json ./...` produces `govulncheck.json` without errors.
+  3. Invoking the `/security-review` slash command against `examples/sample-vulnerable-service/` runs to completion: cartographer emits a valid `go-index.json` (Phase 2 hook validates), tracers fan out in parallel (Phase 2 hook validates each verdict), synthesis runs after fan-out (Phase 2 hook validates the report), and no hook returns a `decision:block`.
+  4. The resulting `review-report.json` validates against the `review-report/v1` schema and contains exactly three findings whose `(class, file, line)` triples correspond to the three planted bugs (one `class: "injection"` for the SQLi, one `class: "authz"` for the bypass, one `class: "oauth"` for the scope-tampering).
+  5. None of the three findings has `confidence: "low"` or a verdict synonym of "ambiguous"/"unverifiable"; each is reported with a concrete data-flow path (for the SQLi and scope-tampering) or a concrete missing-primitive citation (for the authz bypass) per the user's stated success metric.
+**Plans**: TBD
+
+### Phase 6: Documentation
+**Goal**: A reader landing on the repo can understand what the system does, how to run a security review, how each component fits together, and how to contribute a new agent or extend the source/sink/checklist catalog — without needing to read HAND_OFF.md.
+**Depends on**: Phase 5
+**Requirements**: (none — documentation phase)
+**Success Criteria** (what must be TRUE):
+  1. Top-level `README.md` (replacing the Phase 1 stub) describes what the system is, the three-layer architecture (pre-pass → cartographer → fan-out → synthesis), the slash-command entry point, and how to install and run a review against a target Go repo.
+  2. `claude-security-hooks/README.md` documents the three subcommands, the per-agent invariant catalog, the build/install workflow (`make build|test|install`), and the assertion-to-check-predicate mapping (so future contributors can find the test for any A/T/AZ/OA/IC/S assertion).
+  3. `opengrep-mcp/README.md` documents the three MCP tools, the `tier` parameter semantics, the `SEMGREP_APP_TOKEN` env contract, and how to rebuild the OpenGrep container against a different upstream tag.
+  4. `.claude/agents/README.md` (or equivalent) documents the per-agent file structure and the tool-allowlist policy (especially the negative rule that tracer allowlists must not contain `Grep`/`Bash`/`Edit`/`Write`).
+  5. `CONTRIBUTING.md` describes how to add a new specialist agent (e.g., for a future stack), how to extend the source/sink catalog in §8.2, and the TDD-with-tests-before-implementation convention.
+**Plans**: TBD
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6. Phases 2/3/4 develop in parallel from Phase 1 (two Go modules + agent files are independent deliverables); the converge point is Phase 5.
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 1. Repo scaffold | 0/TBD | Not started | - |
+| 2. claude-security-hooks binary | 0/TBD | Not started | - |
+| 3. Agent definitions + hook registration | 0/TBD | Not started | - |
+| 4. opengrep-mcp server + OpenGrep container | 0/TBD | Not started | - |
+| 5. End-to-end smoke test | 0/TBD | Not started | - |
+| 6. Documentation | 0/TBD | Not started | - |
