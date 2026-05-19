@@ -37,14 +37,24 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: A static `claude-security-hooks` binary exists at `claude-security-hooks/bin/claude-security-hooks` that implements `preflight`, `validate`, and `inject-context` subcommands and validates every specialist agent's JSON verdict against the 51 per-agent assertion check predicates. The Go unit-test suite for those predicates passes.
 **Depends on**: Phase 1
 **Requirements**: REQ-hooks-H1, REQ-hooks-H2, REQ-hooks-H3, REQ-hooks-H4, REQ-hooks-H5, REQ-hooks-H6, REQ-hooks-H7, REQ-cartographer-A1, REQ-cartographer-A2, REQ-cartographer-A3, REQ-cartographer-A4, REQ-cartographer-A5, REQ-cartographer-A6, REQ-cartographer-A7, REQ-cartographer-A8, REQ-cartographer-A9, REQ-cartographer-A10, REQ-cartographer-A11, REQ-taint-T1, REQ-taint-T2, REQ-taint-T3, REQ-taint-T4, REQ-taint-T5, REQ-taint-T6, REQ-taint-T7, REQ-taint-T8, REQ-taint-T9, REQ-taint-T10, REQ-taint-T11, REQ-authz-AZ1, REQ-authz-AZ2, REQ-authz-AZ3, REQ-authz-AZ4, REQ-authz-AZ5, REQ-authz-AZ6, REQ-oauth-OA1, REQ-oauth-OA2, REQ-oauth-OA3, REQ-oauth-OA4, REQ-oauth-OA5, REQ-oauth-OA6, REQ-oauth-OA7, REQ-invariant-IC1, REQ-invariant-IC2, REQ-invariant-IC3, REQ-invariant-IC4, REQ-synthesis-S1, REQ-synthesis-S2, REQ-synthesis-S3, REQ-synthesis-S4, REQ-synthesis-S5, REQ-synthesis-S6
-**First-day work item (Q9 from HAND_OFF §5)**: Verify the current Claude Sonnet model identifier against https://docs.claude.com before encoding it into any agent frontmatter or test fixture. Default is `claude-sonnet-4-6`; confirm or update.
+**First-day work item (Q9 from HAND_OFF §5)**: Verify the current Claude Sonnet model identifier against https://docs.claude.com before encoding it into any agent frontmatter or test fixture. Default is `claude-sonnet-4-6`; confirm or update. (Resolved during planning 2026-05-19 — `claude-sonnet-4-6` is current.)
 **Success Criteria** (what must be TRUE):
   1. `CGO_ENABLED=0 go build -o bin/claude-security-hooks ./cmd/claude-security-hooks` from inside `claude-security-hooks/` produces a single static binary with no dynamic library dependencies (verified by `ldd` showing "not a dynamic executable" or equivalent).
   2. `go test ./...` from inside `claude-security-hooks/` passes; every check predicate corresponding to assertions A1–A11, T1–T11, AZ1–AZ6, OA1–OA7, IC1–IC4, S1–S6 has at least one passing unit test (the 51-assertion unit-test suite — Phase 2's primary exit criterion).
   3. The compiled binary exits 0 with no stdout when given a `PostToolUse` event JSON whose `tool_input.subagent_type` is NOT in the security agent set (REQ-hooks-H3 verified end-to-end).
   4. The compiled binary emits exactly one `{"decision":"block","reason":"..."}` JSON object and exits 0 when given a `PostToolUse` event whose `tool_response.content` is malformed JSON (REQ-hooks-H7 verified end-to-end).
   5. The core validator path imports only Go stdlib (`go list -deps ./internal/invariants/... ./internal/schema/...` shows no external module paths); test framework deps confined to `_test.go` files (REQ-hooks-H5).
-**Plans**: TBD
+**Plans**: 8 plans across 3 waves
+
+Plans:
+- [ ] 02-01-PLAN.md — Wave 0: Test infrastructure, shared types, schema scaffolding, meta-tests
+- [ ] 02-02-PLAN.md — Wave 1: Cartographer schema + A1–A11 predicates + tests
+- [ ] 02-03-PLAN.md — Wave 1: Taint tracer schema + T1–T11 predicates + tests
+- [ ] 02-04-PLAN.md — Wave 1: Authz tracer schema + AZ1–AZ6 predicates + tests
+- [ ] 02-05-PLAN.md — Wave 1: OAuth auditor schema + OA1–OA7 predicates + tests
+- [ ] 02-06-PLAN.md — Wave 1: Invariant checker schema + IC1–IC4 predicates + tests
+- [ ] 02-07-PLAN.md — Wave 1: Synthesis schema + S1–S6 predicates + tests
+- [ ] 02-08-PLAN.md — Wave 2: Subcommand wiring (main.go + preflight/validate/inject) + integration tests + Makefile + H1/H2/H3/H4/H7 hardening
 
 ### Phase 3: Agent definitions + hook registration
 **Goal**: Six agent definition files exist under `.claude/agents/` conforming to the common prompt-shape contract, `.claude/settings.json` registers the three hook events against `claude-security-hooks`, and a `/security-review` slash command is in place to drive the workflow. The hooks binary from Phase 2 validates these agent outputs at runtime without needing additional configuration.
@@ -105,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6. Phases 2/3/4 d
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Repo scaffold | 0/TBD | Not started | - |
-| 2. claude-security-hooks binary | 0/TBD | Not started | - |
+| 2. claude-security-hooks binary | 0/8 | Planned | - |
 | 3. Agent definitions + hook registration | 0/TBD | Not started | - |
 | 4. opengrep-mcp server + OpenGrep container | 0/TBD | Not started | - |
 | 5. End-to-end smoke test | 0/TBD | Not started | - |
