@@ -21,19 +21,19 @@ plans_assigned: 2026-05-19
 |----------|-------|
 | **Framework** | stdlib `testing` (Go 1.22+) + `github.com/google/go-cmp` v0.7.0 (test-only, per D-05) |
 | **Config file** | none — `go test` defaults are sufficient |
-| **Quick run command** | `go test ./internal/invariants -run Test<ID>_` (from `claude-security-hooks/`) — single assertion (<100 ms) |
-| **Per-agent suite** | `go test ./internal/invariants -run TestT` (taint), `TestA` (cartographer), `TestAZ`, `TestOA`, `TestIC`, `TestS` |
-| **Full suite command** | `go test ./...` (from `claude-security-hooks/`) |
-| **Build smoke** | `make build && make verify-static` (uses `file` command per portability) |
+| **Quick run command** | `go test -C /home/saghaulor/code/security_reviewer/claude-security-hooks ./internal/invariants -run Test<ID>_` — single assertion (<100 ms) |
+| **Per-agent suite** | `go test -C /home/saghaulor/code/security_reviewer/claude-security-hooks ./internal/invariants -run TestT` (taint), `TestA` (cartographer), `TestAZ`, `TestOA`, `TestIC`, `TestS` |
+| **Full suite command** | `go test -C /home/saghaulor/code/security_reviewer/claude-security-hooks ./...` |
+| **Build smoke** | `make -C /home/saghaulor/code/security_reviewer/claude-security-hooks build` then `make -C /home/saghaulor/code/security_reviewer/claude-security-hooks verify-static` (uses `file` command per portability) — run each as a separate Bash call |
 | **Estimated runtime** | ~5 seconds full suite; ~100 ms targeted |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** `go test ./internal/invariants -run Test<ID>_` for the assertion(s) the task implemented.
-- **After every plan wave:** `go test ./...` from `claude-security-hooks/`.
-- **Before `/gsd-verify-work`:** `make build` (H1 smoke via `file`) + `make test` (full suite) — both green.
+- **After every task commit:** `go test -C /home/saghaulor/code/security_reviewer/claude-security-hooks ./internal/invariants -run Test<ID>_` for the assertion(s) the task implemented.
+- **After every plan wave:** `go test -C /home/saghaulor/code/security_reviewer/claude-security-hooks ./...`.
+- **Before `/gsd-verify-work`:** `make -C ... build` then `make -C ... test` (separate calls) — both green.
 - **Max feedback latency:** **5 seconds** (full suite).
 
 ---
@@ -58,7 +58,7 @@ plan ships.
 | A8 | unit + filesystem | 1+1 | `testdata/workspace/` (known line counts) | 02-02 | ⬜ pending |
 | A9 | unit | 1+1 | inline | 02-02 | ⬜ pending |
 | A10 | unit (no-op stub) | 1+1 | inline; **no-op pass per Phase 2 decision; TODO(phase-5)** | 02-02 | ⬜ pending |
-| A11 | unit | 1+1 | inline | 02-02 | ⬜ pending |
+| A11 | unit (no-op stub) | 1+1 | inline; **no-op pass per Phase 2 decision; TODO(phase-5)** | 02-02 | ⬜ pending |
 
 ### Taint Tracer (T1–T11) — REQ-taint-T1..T11
 
@@ -117,19 +117,19 @@ plan ships.
 | S3 | unit | 1+1 | inline | 02-07 | ⬜ pending |
 | S4 | unit | 1+1 | inline | 02-07 | ⬜ pending |
 | S5 | unit | 1+1 | inline | 02-07 | ⬜ pending |
-| S6 | unit | 1+1 | inline | 02-07 | ⬜ pending |
+| S6 | unit | 1+1 (+recovery) | inline; includes unnoted-duplicate negative AND noted-duplicate recovery positive | 02-07 | ⬜ pending |
 
 ### Hook Build/Runtime Invariants (H1–H7) — REQ-hooks-H1..H7
 
 | ID | Test Type | Min Cases | Fixture | Plan | Status |
 |----|-----------|-----------|---------|------|--------|
-| H1 | Makefile smoke (`make verify-static`) | 1 | `make build` exits 0; `file bin/...` reports "statically linked" | 02-08 (Wave 0 02-01 lays Makefile) | ⬜ pending |
+| H1 | Makefile smoke (`make verify-static`) | 1 | `make -C ... build` exits 0; `file bin/...` reports "statically linked" | 02-08 (Wave 0 02-01 lays Makefile) | ⬜ pending |
 | H2 | integration unit | 3 | inline JSON: PreToolUse, PostToolUse, SubagentStart fixtures (Wave 0 events tests + Wave 2 subcommand tests) | 02-01 (events) + 02-08 (subcommands) | ⬜ pending |
-| H3 | integration unit | 1 | inline JSON: `subagent_type="general-purpose"` | 02-08 | ⬜ pending |
-| H4 | integration unit | 1 | inline; any failing invariant ⇒ single block JSON, exit 0 | 02-08 | ⬜ pending |
+| H3 | integration unit + end-to-end smoke | 1+1 | inline JSON: `subagent_type="general-purpose"`; smoke via piped printf to compiled binary, asserts empty stdout | 02-08 | ⬜ pending |
+| H4 | integration unit + end-to-end smoke | 1+1 | inline; any failing invariant ⇒ single block JSON, exit 0; smoke via piped printf, asserts `"decision":"block"` present | 02-08 | ⬜ pending |
 | H5 | meta-test (`h5_deps_test.go`) | 1 | runs `go list -deps -test ./...` via `os/exec` | 02-01 | ⬜ pending |
-| H6 | meta-test (`h6_coverage_test.go`) | 1 | parses `_test.go` via `go/parser`; asserts every registry ID has Test func; populated incrementally by 02-02..02-07 | 02-01 (scaffold) + 02-02..02-07 (ratchet entries) | ⬜ pending |
-| H7 | integration unit | 4 | inline: invalid JSON, valid-JSON-wrong-type, empty, multi-segment array | 02-08 | ⬜ pending |
+| H6 | meta-test (`h6_coverage_test.go`) | 1 | parses `_test.go` via `go/parser`; expectedIDs map FULLY PRE-POPULATED in Wave 0 (sealed); Wave 1 plans contribute test FUNCTIONS only (no map edits) | 02-01 (full map seal) + 02-02..02-07 (test funcs) | ⬜ pending |
+| H7 | integration unit + end-to-end smoke | 4+1 | inline: invalid JSON, valid-JSON-wrong-type, empty, multi-segment array; smoke via piped printf with malformed `tool_response.content` | 02-08 | ⬜ pending |
 
 *Status legend: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -145,7 +145,7 @@ Per RESEARCH.md § "Wave 0 Gaps" (lines 904-923) — the following infrastructur
 - [ ] `claude-security-hooks/internal/invariants/fsutil.go` — `FileExists`, `DirExists`, `LineCount`, `ResolveWorkspaceRoot` helpers. **Plan 02-01 Task 01.2**
 - [ ] `claude-security-hooks/internal/invariants/fsutil_test.go` — covers helpers including traversal/symlink rejection (security T-02-01-01/T-02-01-05). **Plan 02-01 Task 01.2**
 - [ ] `claude-security-hooks/internal/invariants/h5_deps_test.go` — H5 meta-test. **Plan 02-01 Task 01.5**
-- [ ] `claude-security-hooks/internal/invariants/h6_coverage_test.go` — H6 meta-test scaffold; expected-IDs map populated incrementally by 02-02..02-07. **Plan 02-01 Task 01.5** (initial) + appended by Wave 1 plans
+- [ ] `claude-security-hooks/internal/invariants/h6_coverage_test.go` — H6 meta-test scaffold with FULL pre-populated expectedIDs map (sealed Wave 0; Wave 1 plans do not modify it). **Plan 02-01 Task 01.5**
 - [ ] `claude-security-hooks/internal/invariants/testdata/workspace/` — fixtures with known line counts. **Plan 02-01 Task 01.2**
 - [ ] `claude-security-hooks/internal/invariants/testdata/graphify-out/graph.json` — minimal valid graph for A6. **Plan 02-01 Task 01.5**
 - [ ] `claude-security-hooks/internal/invariants/testdata/synthesis_out/{both,no_md,no_json}/` — fixture trees for S1. **Plan 02-01 Task 01.5**
@@ -164,11 +164,11 @@ Per RESEARCH.md § "Wave 0 Gaps" (lines 904-923) — the following infrastructur
 
 Files added in Plan 02-08 that enable end-to-end H1–H7 coverage:
 
-- [ ] `claude-security-hooks/cmd/claude-security-hooks/main.go` — subcommand dispatch (`flag.NewFlagSet`)
-- [ ] `claude-security-hooks/internal/hooks/preflight.go` + `_test.go` — D-09 input strict decode
+- [ ] `claude-security-hooks/cmd/claude-security-hooks/main.go` — subcommand dispatch via `switch os.Args[1]` (NO `flag.NewFlagSet` — Phase 2 subcommands take no flags)
+- [ ] `claude-security-hooks/internal/hooks/preflight.go` + `_test.go` — D-09 input strict decode (inline typed per agent; no interface{} helper)
 - [ ] `claude-security-hooks/internal/hooks/validate.go` + `_test.go` — CON-validate-protocol + Pitfall 4 string/array content
 - [ ] `claude-security-hooks/internal/hooks/inject.go` + `_test.go` — D-08 stub
-- [ ] `claude-security-hooks/internal/hooks/dispatch.go` + `_test.go` — per-agent dispatch table
+- [ ] `claude-security-hooks/internal/hooks/dispatch.go` + `_test.go` — per-agent dispatch with inline typed decode (no interface{} parameter; preserves D-02)
 - [ ] `claude-security-hooks/internal/hooks/codefences.go` + `_test.go` — code-fence stripping helper
 - [ ] `claude-security-hooks/internal/invariants/boundary_test.go` — enforces PATTERNS.md S4 (no internal/hooks import from invariants)
 
@@ -178,7 +178,7 @@ Files added in Plan 02-08 that enable end-to-end H1–H7 coverage:
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Compiled binary actually runs inside Claude Code hook lifecycle | REQ-hooks-H2 (end-to-end) | True E2E requires Claude Code to dispatch the hook; out of scope for Phase 2 (Phase 5 owns smoke run) | Phase 5 will run `examples/sample-vulnerable-service/` end-to-end. Phase 2 unit-level integration tests are sufficient for the phase exit criterion. |
+| Compiled binary actually runs inside Claude Code hook lifecycle | REQ-hooks-H2 (end-to-end) | True E2E requires Claude Code to dispatch the hook; out of scope for Phase 2 (Phase 5 owns smoke run) | Phase 5 will run `examples/sample-vulnerable-service/` end-to-end. Phase 2 unit-level integration tests + the H3/H4/H7 piped-printf smokes are sufficient for the phase exit criterion. |
 | `inject-context` produces useful injected context | D-08 (deferred) | Per D-08 inject-context is a no-op stub in Phase 2 — useful injection is Phase 3 or Phase 5 concern | Verify only that the subcommand accepts SubagentStart JSON and exits 0 silently. |
 | Workspace-root resolution under non-WSL platforms | D-11 / RQ-8 | Tests run on dev machine (WSL2); platform-specific CWD behavior on macOS/native Linux requires Claude Code installation there | Document fallback chain (`$CLAUDE_PROJECT_DIR` → event.cwd → marker scan) and rely on the runtime guard emitting `workspace_root_not_found` if assumption fails. |
 
@@ -187,11 +187,13 @@ Files added in Plan 02-08 that enable end-to-end H1–H7 coverage:
 ## Validation Sign-Off
 
 - [x] All 58 IDs have an assigned Test Type + Min Cases + Plan column ✓
-- [ ] Per-task automated verify command exists for every plan task (every Plan 02-* PLAN.md task has an `<automated>` verify block — verified during planner write)
+- [ ] Per-task automated verify command exists for every plan task (every Plan 02-* PLAN.md task has at least one `<automated>` verify block — Plan 02-08 uses MULTIPLE separate blocks to cover H1, static linkage, full test, H3 smoke, H4/H7 smoke independently — verified during planner write)
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify ✓ (every task has automated_verify per plan structure)
-- [x] Wave 0 covers all MISSING references ✓ (all fsutil/registry/meta-test scaffolding listed above, owned by Plan 02-01)
+- [x] Wave 0 covers all MISSING references ✓ (all fsutil/registry/meta-test scaffolding listed above, owned by Plan 02-01; h6_coverage_test.go expectedIDs map is SEALED at Wave 0)
 - [x] No watch-mode flags ✓ (`go test` is single-shot)
 - [x] Feedback latency < 5s ✓ (full suite estimated ≤ 5s)
 - [x] `nyquist_compliant: true` set in frontmatter ✓
+- [x] No compound shell commands in any plan `<automated>` block (per CLAUDE.md) ✓
+- [x] `h6_coverage_test.go` SEALED in Wave 0 with full pre-populated expectedIDs map; Wave 1 plans (02-02..02-07) contribute test FUNCTIONS only — eliminates the parallel-write race ✓
 
 **Approval:** Plan column populated; ready for execution.
