@@ -4,133 +4,180 @@ description: Run a complete security review of a Go module using specialist agen
 allowed-tools: Task, Read, Glob, Bash
 ---
 
-# /security-review Command
+You are running a full security review pipeline. Follow every step below in order. **Do not skip any step. Do not reuse existing intermediate files.** This is a fresh scan.
 
-Run a complete security review of a Go module, orchestrating the full pipeline: pre-pass artifacts → cartographer structural analysis → fan-out tracers → synthesis.
+## Step 0: Parse the target directory
 
-## Usage
+The working directory is `$ARGUMENTS`. If `$ARGUMENTS` is empty, use `.` (current directory). Resolve it to an absolute path using `Bash: realpath $ARGUMENTS`.
 
+Store this as TARGET_DIR. All subsequent steps use this path.
+
+## Step 1: Generate a session ID
+
+Run `Bash: uuidgen` and store the output (trimmed) as SESSION_ID. This UUID will be passed to every agent and embedded in all output files so results can be traced to this exact run.
+
+## Step 2: Delete stale intermediate files
+
+Remove any existing intermediate files from the previous run. These files from any prior run are INVALID for this run because they were produced under a different SESSION_ID.
+
+Run the following (ignore errors if files don't exist):
 ```
-/security-review [directory]
+Bash: rm -f TARGET_DIR/go-index.json TARGET_DIR/authz-findings.json TARGET_DIR/oauth-checklist.json TARGET_DIR/invariant-results.json TARGET_DIR/review-report.json TARGET_DIR/review-report.md
+Bash: rm -f TARGET_DIR/taint-verdict-*.json
 ```
 
-**Parameters:**
-- `directory` (optional): Path to the Go module root. Defaults to current working directory.
+Replace TARGET_DIR with the actual resolved path.
 
-## Workflow Stages
+## Step 3: Bootstrap opengrep-mcp
 
-### Stage 0: Bootstrap opengrep-mcp (NEW)
+Issue `GET http://localhost:8000/health` with a 5-second timeout using Bash curl.
 
-Before running any security analysis, ensure the opengrep-mcp server is available. This stage checks if the server is running and starts it via Docker if needed.
+- If the server responds with 2xx, proceed to Step 4.
+- If unreachable, start the container:
+  ```
+  Bash: docker stop opengrep-mcp-e2e-phase8 2>/dev/null; true
+  Bash: docker rm opengrep-mcp-e2e-phase8 2>/dev/null; true
+  Bash: docker run -d --name opengrep-mcp-e2e-phase8 -p 8000:8000 opengrep-mcp:latest
+  ```
+  Then poll `GET http://localhost:8000/health` every second for up to 30 seconds. If it never responds 2xx, **stop with error**: `"opengrep-mcp bootstrap failed: health check timeout after 30 seconds"`.
 
-**Procedure:**
+If Docker is unavailable or the image doesn't exist, **stop with a clear error message**.
 
-1. **Health Check:** Issue `GET http://localhost:8000/health` with a 5-second timeout.
-   - If the server responds with a 2xx status code, proceed to Stage 1.
-   - If the server is unreachable (connection refused, timeout), proceed to step 2.
+## Step 4: Run pre-pass artifacts
 
-2. **Start Docker Container (if needed):**
-   - Execute: `docker run -d --name opengrep-mcp-e2e-phase8 -p 8000:8000 opengrep-mcp:latest`
-   - If the container name already exists (from a prior run), stop and remove it first:
-     ```bash
-     docker stop opengrep-mcp-e2e-phase8 2>/dev/null || true
-     docker rm opengrep-mcp-e2e-phase8 2>/dev/null || true
-     docker run -d --name opengrep-mcp-e2e-phase8 -p 8000:8000 opengrep-mcp:latest
-     ```
+Run these two commands with TARGET_DIR as the working directory:
 
-3. **Wait for Health Check to Succeed:**
-   - Poll `GET http://localhost:8000/health` every 1 second, up to 30 seconds.
-   - Once the endpoint responds 2xx, proceed to Stage 1.
-   - If the health check never succeeds within 30 seconds, fail hard with error message.
+1. `Bash (cwd=TARGET_DIR): graphify build .`
+   - This produces `TARGET_DIR/graphify-out/graph.json`.
+   - If it fails, stop with error.
 
-4. **Error Handling:**
-   - If Docker is not available (`docker: command not found`), return error: `"opengrep-mcp bootstrap failed: docker not available"`
-   - If the image `opengrep-mcp:latest` does not exist, return error: `"opengrep-mcp bootstrap failed: image not found. Build with: cd /path/to/opengrep-mcp && make build && docker build -t opengrep-mcp:latest ."`
-   - If the container fails to start (non-zero exit), return error: `"opengrep-mcp bootstrap failed: container startup error. Check 'docker logs opengrep-mcp-e2e-phase8'"`
-   - If the health check times out after 30 seconds, return error: `"opengrep-mcp bootstrap failed: health check timeout after 30 seconds"`
-   - **No graceful degradation:** If bootstrap fails, `/security-review` stops immediately. Do not attempt to run the workflow without the server.
+2. `Bash (cwd=TARGET_DIR): govulncheck -json ./... > govulncheck.json 2>govulncheck.err`
+   - If `govulncheck` is not installed, write `{"available":false}` to `govulncheck.json` and continue.
+   - If it fails for other reasons, stop with error.
 
-**Rationale:** The opengrep-mcp scanner is essential to the analysis pipeline. Bootstrapping it automatically ensures users can run `/security-review` without manual Docker setup. Failing hard on bootstrap errors provides clear feedback rather than producing partial or incorrect results.
+## Step 5: Run cartographer (sequential)
 
-### Stage 1: Pre-Pass Artifacts
+Spawn a Task with agent `go-cartographer` and the following input:
 
-Generate prerequisite analysis files:
-1. **Graphify graph:** `graphify build [directory]` produces `graphify-out/graph.json`
-2. **Vulnerability check:** `govulncheck -json ./...` produces `govulncheck.json`
-
-If either command fails, return structured error and stop.
-
-### Stage 2: Cartographer (Sequential)
-
-Invoke the `go-cartographer` agent once. It reads the graphify output and produces `go-index.json`, a structural index of:
-- HTTP routers and entrypoints
-- Data sinks by kind (SQL, cmd, path, etc.)
-- OAuth surfaces and redirect URIs
-- Payment processing surfaces
-- Authorization primitives (canaries for missing authz)
-- Vulnerability findings from govulncheck
-
-**Input to cartographer:**
 ```json
 {
-  "working_directory": "[directory]",
-  "review_session_id": "[generated_uuid]"
+  "working_directory": "<TARGET_DIR>",
+  "review_session_id": "<SESSION_ID>"
 }
 ```
 
-Wait for completion. On error, return structured error and stop.
+Wait for it to complete. If it fails or produces an error response, stop with error. The output will be written to `TARGET_DIR/go-index.json`.
 
-### Stage 3: Tracer Fan-Out (Parallel)
+## Step 6: Read cartographer output
 
-Once cartographer completes, dispatch four tracer agents in parallel against the cartographer output. Pass the SESSION_ID to each tracer:
+Read `TARGET_DIR/go-index.json`. Extract the following fields for use in Step 7:
+- `entrypoints` — array of route objects
+- `authz_primitives` — array of authz primitive objects  
+- `sinks_by_kind` — map of sink kind to array of sink locations
+- `oauth_locations` — OAuth surface locations
 
-1. **go-taint-tracer:** For each (source, sink) pair from the cartographer index, verify exploitability of data flow from source to sink. Produces `taint-verdict-*.json` files.
-   **Input:** Add `"review_session_id": "$SESSION_ID"` to the Task input JSON.
+## Step 7: Run tracers (parallel)
 
-2. **go-authz-tracer:** For each authorization-missing endpoint, trace whether the missing authorization is retrievable via a call to a known authz primitive. Produces `authz-findings.json`.
-   **Input:** Add `"review_session_id": "$SESSION_ID"` to the Task input JSON.
+Spawn all four tracer agents simultaneously using parallel Task invocations. Do not wait for one before starting the others. Pass SESSION_ID to each.
 
-3. **go-oauth-auditor:** For OAuth surfaces, apply the checklist taxonomy to all OAuth code paths. Dispatches taint pairs to go-taint-tracer for scope-tampering verification. Produces `oauth-checklist.json`.
-   **Input:** Add `"review_session_id": "$SESSION_ID"` to the Task input JSON.
+### Tracer 1: go-authz-tracer
 
-4. **invariant-checker:** Verify language-level invariants (type safety, nil receiver, race conditions). Produces `invariant-results.json`.
-   **Input:** Add `"review_session_id": "$SESSION_ID"` to the Task input JSON.
-
-All four run in parallel; synthesis must wait for all four to complete.
-
-### Stage 4: Synthesis (Sequential)
-
-Once all tracers complete, invoke the `synthesis` agent once. It reads all tracer outputs from the working directory and produces:
-- `review-report.json` (machine-readable, conforming to review-report/v1 schema)
-- `review-report.md` (human-readable markdown)
-
-**Input to synthesis:**
+Input:
 ```json
 {
-  "working_directory": "[directory]",
-  "review_id": "[same_uuid_from_stage_1]"
+  "routes": <entrypoints array from go-index.json>,
+  "authz_primitives": <authz_primitives array from go-index.json>,
+  "sensitive_operations": [],
+  "review_session_id": "<SESSION_ID>"
 }
 ```
 
-The `review_id` is generated once at command start and injected into both cartographer and synthesis for consistency.
+Output file: `TARGET_DIR/authz-findings.json`
 
-## Implementation Notes
+### Tracer 2: go-oauth-auditor
 
-- **review_id generation:** Use Bash `uuidgen` to generate a UUID at command start and store it in `$SESSION_ID`. This UUID is passed to cartographer as `review_session_id`, to all four tracers as `review_session_id`, and to synthesis as `review_id`.
-- **Pre-pass failures:** If graphify or govulncheck fails, return error immediately without invoking agents.
-- **Agent failures:** If any agent (cartographer, tracer, synthesis) fails, return structured error and stop. Partial results are not acceptable.
-- **Output directory:** All JSON artifacts are written to the working directory (where graphify-out/ is located). The synthesis agent produces `review-report.json` and `review-report.md` in the same directory.
-- **Session ID threading:** All intermediate outputs from cartographer and the four tracers must echo their `review_session_id` field if it was provided in the input. Synthesis uses the session ID to deduplicate findings from the same review run.
-
-## Example
-
-```bash
-/security-review /home/user/vulnerable-app
+Input:
+```json
+{
+  "working_directory": "<TARGET_DIR>",
+  "oauth_locations": <oauth_locations object from go-index.json>,
+  "review_session_id": "<SESSION_ID>"
+}
 ```
 
-This command will:
-1. Build the graphify graph and run govulncheck against `/home/user/vulnerable-app`
-2. Run cartographer to produce `go-index.json`
-3. Fan out four tracers in parallel
-4. Wait for all tracers, then run synthesis
-5. Produce `review-report.json` and `review-report.md`
+Output file: `TARGET_DIR/oauth-checklist.json`
+
+### Tracer 3: invariant-checker
+
+Input:
+```json
+{
+  "flow_name": "security-review",
+  "invariants": [
+    {"id": "I1", "statement": "No SQL query is constructed by string concatenation with user-controlled input without parameterization"},
+    {"id": "I2", "statement": "All HTTP handlers that modify state require authentication before processing"},
+    {"id": "I3", "statement": "OAuth state parameter is validated on callback before proceeding"},
+    {"id": "I4", "statement": "Fund transfer operations validate that source account belongs to authenticated user"}
+  ],
+  "review_session_id": "<SESSION_ID>"
+}
+```
+
+Output file: `TARGET_DIR/invariant-results.json`
+
+### Tracer 4: go-taint-tracer (one invocation per SQL sink)
+
+For each sink in `sinks_by_kind.sql_exec` from go-index.json, spawn a separate `go-taint-tracer` Task. Construct source/sink pairs by matching each SQL sink's file/line to the nearest handler function from `entrypoints`.
+
+For each (handler entrypoint, SQL sink) pair, the input is:
+```json
+{
+  "source": {
+    "file": "<handler file from entrypoints>",
+    "line": <handler line from entrypoints>,
+    "expr": "r.URL.Query().Get(\"...\") or r.PostForm or r.Body",
+    "kind": "http_query"
+  },
+  "sink": {
+    "file": "<sink file>",
+    "line": <sink line>,
+    "expr": "<sink callee>",
+    "kind": "sql_exec"
+  },
+  "max_depth": 8,
+  "semgrep_tier": "intrafile",
+  "review_session_id": "<SESSION_ID>"
+}
+```
+
+Name each output file `TARGET_DIR/taint-verdict-<handler-name>-sqli.json` where `<handler-name>` is derived from the handler's FQN (last component, lowercased, with "Handler" stripped).
+
+## Step 8: Run synthesis (sequential)
+
+Wait for ALL four tracer agents from Step 7 to complete. Then spawn a Task with agent `synthesis`:
+
+```json
+{
+  "working_directory": "<TARGET_DIR>",
+  "review_id": "<SESSION_ID>"
+}
+```
+
+Wait for it to complete. It will produce `TARGET_DIR/review-report.json` and `TARGET_DIR/review-report.md`.
+
+## Step 9: Report completion
+
+Once synthesis completes, report:
+- The review ID (SESSION_ID)
+- Total findings by severity from review-report.json
+- Path to review-report.md
+
+---
+
+## Key constraints (MUST follow)
+
+- **Always run all steps in order** — do not skip any step even if intermediate files exist from a prior run. The stale files were deleted in Step 2.
+- **Always generate a fresh SESSION_ID** — never reuse a session ID from a previous run.
+- **Never read old intermediate files** — Step 2 deletes them; there should be nothing to read before the agents create them.
+- **Pass SESSION_ID to every agent** — it is required in all Task inputs (cartographer, all 4 tracers, synthesis).
+- **Parallel tracers** — all four tracer Tasks in Step 7 must be started simultaneously, not sequentially.
