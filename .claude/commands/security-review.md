@@ -14,7 +14,9 @@ Store this as TARGET_DIR. All subsequent steps use this path.
 
 ## Step 1: Generate a session ID
 
-Run `Bash: uuidgen` and store the output (trimmed) as SESSION_ID. This UUID will be passed to every agent and embedded in all output files so results can be traced to this exact run.
+Run `Bash: .claude/hooks/bin/claude-security-hooks uuid` from the project root and store the output (trimmed) as SESSION_ID. This UUID will be passed to every agent and embedded in all output files so results can be traced to this exact run.
+
+(`uuidgen` is not used because it may not be installed; `claude-security-hooks uuid` uses `crypto/rand` and is always available.)
 
 ## Step 2: Delete stale intermediate files
 
