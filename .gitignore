@@ -33,3 +33,9 @@ go.sum
 # Temp/working files
 *.tmp
 *.log
+
+# Generated review outputs
+review-report.json
+review-report.md
+govulncheck.json
+graphify-out/
