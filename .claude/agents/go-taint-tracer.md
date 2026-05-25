@@ -28,7 +28,8 @@ You verify whether untrusted input from one source reaches one sink along an exp
     "kind": "sql_exec|cmd_exec|http_client|fs_path|deserialize|template_render|xml_parse|sql_query_raw|reflect_call"
   },
   "max_depth": 8,
-  "semgrep_tier": "pro|intrafile|ce"
+  "semgrep_tier": "pro|intrafile|ce",
+  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command
 }
 ```
 
@@ -201,7 +202,8 @@ These pairs are dispatched by `go-oauth-auditor` after it locates the OAuth surf
     "goroutine_boundaries_crossed": 0
   },
   "sanitizers_unverified": [],
-  "notes": "..."
+  "notes": "...",
+  "review_session_id": <uuid> — Echo of input review_session_id if provided
 }
 ```
 

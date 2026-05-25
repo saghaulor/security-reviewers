@@ -28,6 +28,7 @@ var InvariantCheckerInvariants = []InvariantCheckerInvariant{
 var InvariantCheckerJointInvariants = []InvariantCheckerJointInvariant{
 	{ID: "IC2", Description: "exactly one result per input invariant; IDs match input set", Severity: SeverityHigh, Check: checkIC2Joint},
 	{ID: "IC4", Description: "results introduce no new invariant IDs (D-16: no discovery)", Severity: SeverityHigh, Check: checkIC4Joint},
+	{ID: "IC5", Description: "if input has review_session_id, verdict review_session_id must match exactly", Severity: SeverityHigh, Check: checkIC5Joint},
 }
 
 // --- IC1 ---
@@ -97,4 +98,21 @@ func checkIC4Joint(in *schema.InvariantCheckerInput, v *schema.InvariantCheckerV
 		}
 	}
 	return out
+}
+
+// --- IC5 (JOINT) ---
+func checkIC5Joint(in *schema.InvariantCheckerInput, v *schema.InvariantCheckerVerdict) []Violation {
+	// If input does not specify a session ID, no check is performed (field is optional).
+	if in.ReviewSessionID == "" {
+		return nil
+	}
+	// If input specifies a session ID, verdict must echo it exactly.
+	if v.ReviewSessionID != in.ReviewSessionID {
+		return []Violation{{
+			Path:     "review_session_id",
+			Expected: in.ReviewSessionID,
+			Actual:   v.ReviewSessionID,
+		}}
+	}
+	return nil
 }

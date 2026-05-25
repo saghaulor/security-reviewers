@@ -25,6 +25,7 @@ type PreToolUseEvent struct {
 	ToolUseID      string        `json:"tool_use_id"`
 	PermissionMode string        `json:"permission_mode,omitempty"`
 	Effort         EffortLevel   `json:"effort,omitempty"`
+	Status         string        `json:"status,omitempty"`
 }
 
 // ToolResponse — content is string OR array per live docs; RawMessage handles both.
@@ -45,6 +46,7 @@ type PostToolUseEvent struct {
 	ToolResponse   ToolResponse  `json:"tool_response"`
 	PermissionMode string        `json:"permission_mode,omitempty"`
 	Effort         EffortLevel   `json:"effort,omitempty"`
+	Status         string        `json:"status,omitempty"`
 }
 
 // SubagentStartEvent — D-15 fold-in: agent_type per live docs, NOT agent_name (HAND_OFF stale).

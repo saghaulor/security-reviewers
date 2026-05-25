@@ -25,7 +25,8 @@ You verify that every route in a Go application passes through recognized author
     }
   ],
   "authz_primitives": [{"fqn": "...", "kind": "middleware|guard|decorator"}],
-  "sensitive_operations": [{"file": "...", "line": 0, "kind": "db_write|external_api|privileged_op"}]
+  "sensitive_operations": [{"file": "...", "line": 0, "kind": "db_write|external_api|privileged_op"}],
+  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command
 }
 ```
 
@@ -129,7 +130,8 @@ For each authz primitive used in the routes:
       "confidence": "high|medium|low"
     }
   ],
-  "weak_primitives": [{"fqn": "...", "reason": "..."}]
+  "weak_primitives": [{"fqn": "...", "reason": "..."}],
+  "review_session_id": <uuid> — Echo of input review_session_id if provided
 }
 ```
 

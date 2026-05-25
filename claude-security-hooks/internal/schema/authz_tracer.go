@@ -5,6 +5,7 @@ type AuthzInput struct {
 	Routes               []AuthzRoute            `json:"routes"`
 	AuthzPrimitives      []AuthzInputPrimitive   `json:"authz_primitives"`
 	SensitiveOperations  []SensitiveOp           `json:"sensitive_operations"`
+	ReviewSessionID      string                  `json:"review_session_id,omitempty"`
 }
 
 type AuthzRoute struct {
@@ -28,9 +29,10 @@ type SensitiveOp struct {
 
 // AuthzVerdict represents the output of the authz tracer.
 type AuthzVerdict struct {
-	Summary         AuthzSummary    `json:"summary"`
-	Findings        []AuthzFinding  `json:"findings,omitempty"`
-	WeakPrimitives  []WeakPrimitive `json:"weak_primitives,omitempty"`
+	Summary             AuthzSummary    `json:"summary"`
+	Findings            []AuthzFinding  `json:"findings,omitempty"`
+	WeakPrimitives      []WeakPrimitive `json:"weak_primitives,omitempty"`
+	ReviewSessionID     string          `json:"review_session_id,omitempty"`
 }
 
 type AuthzSummary struct {

@@ -546,3 +546,64 @@ func TestT11_AgentToolUsageCompliance_NoOpStub(t *testing.T) {
 		})
 	}
 }
+
+// TestT12_SessionIDMatchesInput validates T12 (JOINT): if input has review_session_id,
+// output review_session_id must match exactly.
+func TestT12_SessionIDMatchesInput(t *testing.T) {
+	check := locateTaintJointCheck(t, "T12")
+	cases := []struct {
+		name string
+		in   *schema.TaintInput
+		v    *schema.TaintVerdict
+		want []invariants.Violation
+	}{
+		{
+			name: "ok: both have matching session ID",
+			in: &schema.TaintInput{
+				ReviewSessionID: "uuid-123",
+			},
+			v: &schema.TaintVerdict{
+				ReviewSessionID: "uuid-123",
+			},
+			want: nil,
+		},
+		{
+			name: "bad: input has session ID but output mismatches",
+			in: &schema.TaintInput{
+				ReviewSessionID: "uuid-123",
+			},
+			v: &schema.TaintVerdict{
+				ReviewSessionID: "uuid-456",
+			},
+			want: []invariants.Violation{{Path: "review_session_id", Expected: "uuid-123", Actual: "uuid-456"}},
+		},
+		{
+			name: "ok: input omits session ID (optional field)",
+			in: &schema.TaintInput{
+				ReviewSessionID: "",
+			},
+			v: &schema.TaintVerdict{
+				ReviewSessionID: "uuid-123",
+			},
+			want: nil,
+		},
+		{
+			name: "ok: both omit session ID",
+			in: &schema.TaintInput{
+				ReviewSessionID: "",
+			},
+			v: &schema.TaintVerdict{
+				ReviewSessionID: "",
+			},
+			want: nil,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := check(tc.in, tc.v)
+			if diff := cmp.Diff(tc.want, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("T12 check mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

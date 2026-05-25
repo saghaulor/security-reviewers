@@ -2,16 +2,18 @@ package schema
 
 // OAuthInput represents the input to the OAuth auditor.
 type OAuthInput struct {
-	OAuthLocations OAuthLocations `json:"oauth_locations"`
-	TargetProfile  string         `json:"target_profile"`
-	FeaturesInUse  []string       `json:"features_in_use,omitempty"`
+	OAuthLocations  OAuthLocations `json:"oauth_locations"`
+	TargetProfile   string         `json:"target_profile"`
+	FeaturesInUse   []string       `json:"features_in_use,omitempty"`
+	ReviewSessionID string         `json:"review_session_id,omitempty"`
 }
 
 // OAuthVerdict represents the output of the OAuth auditor.
 type OAuthVerdict struct {
-	Profile    string             `json:"profile"`
-	Checklist  []ChecklistEntry   `json:"checklist,omitempty"`
-	TaintPairs []TaintPair        `json:"taint_pairs,omitempty"`
+	Profile             string             `json:"profile"`
+	Checklist           []ChecklistEntry   `json:"checklist,omitempty"`
+	TaintPairs          []TaintPair        `json:"taint_pairs,omitempty"`
+	ReviewSessionID     string             `json:"review_session_id,omitempty"`
 }
 
 type ChecklistEntry struct {

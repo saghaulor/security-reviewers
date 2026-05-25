@@ -2,10 +2,11 @@ package schema
 
 // TaintInput represents the input to the taint tracer.
 type TaintInput struct {
-	Source      TaintEndpoint `json:"source"`
-	Sink        TaintEndpoint `json:"sink"`
-	MaxDepth    int           `json:"max_depth"`
-	SemgrepTier string        `json:"semgrep_tier"`
+	Source            TaintEndpoint `json:"source"`
+	Sink              TaintEndpoint `json:"sink"`
+	MaxDepth          int           `json:"max_depth"`
+	SemgrepTier       string        `json:"semgrep_tier"`
+	ReviewSessionID   string        `json:"review_session_id,omitempty"`
 }
 
 type TaintEndpoint struct {
@@ -24,6 +25,7 @@ type TaintVerdict struct {
 	Gopls                  GoplsEvidence          `json:"gopls"`
 	SanitizersUnverified   []SanitizerUnverified  `json:"sanitizers_unverified,omitempty"`
 	Notes                  string                 `json:"notes,omitempty"`
+	ReviewSessionID        string                 `json:"review_session_id,omitempty"`
 }
 
 type TaintPathStep struct {

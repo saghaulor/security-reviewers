@@ -43,7 +43,8 @@ Execute the following steps in order:
 
 Use `Glob` to list all JSON files in the input directory. For each file:
 1. Read the JSON and validate it against the expected schema for that agent.
-2. Extract findings and build an internal list: `[(severity, class, title, files, lines, path, source_agents, confidence, spec_references), ...]`.
+2. Check each file's `review_session_id` field. Skip any file where `review_session_id` is present but does not match the `review_id` passed in the Task input. Log skipped files as informational warnings in `deduplication_notes`.
+3. Extract findings and build an internal list: `[(severity, class, title, files, lines, path, source_agents, confidence, spec_references), ...]`.
 
 **Step 2: Deduplicate findings**
 

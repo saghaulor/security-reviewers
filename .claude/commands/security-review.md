@@ -82,15 +82,19 @@ Wait for completion. On error, return structured error and stop.
 
 ### Stage 3: Tracer Fan-Out (Parallel)
 
-Once cartographer completes, dispatch four tracer agents in parallel against the cartographer output:
+Once cartographer completes, dispatch four tracer agents in parallel against the cartographer output. Pass the SESSION_ID to each tracer:
 
 1. **go-taint-tracer:** For each (source, sink) pair from the cartographer index, verify exploitability of data flow from source to sink. Produces `taint-verdict-*.json` files.
+   **Input:** Add `"review_session_id": "$SESSION_ID"` to the Task input JSON.
 
 2. **go-authz-tracer:** For each authorization-missing endpoint, trace whether the missing authorization is retrievable via a call to a known authz primitive. Produces `authz-findings.json`.
+   **Input:** Add `"review_session_id": "$SESSION_ID"` to the Task input JSON.
 
 3. **go-oauth-auditor:** For OAuth surfaces, apply the checklist taxonomy to all OAuth code paths. Dispatches taint pairs to go-taint-tracer for scope-tampering verification. Produces `oauth-checklist.json`.
+   **Input:** Add `"review_session_id": "$SESSION_ID"` to the Task input JSON.
 
 4. **invariant-checker:** Verify language-level invariants (type safety, nil receiver, race conditions). Produces `invariant-results.json`.
+   **Input:** Add `"review_session_id": "$SESSION_ID"` to the Task input JSON.
 
 All four run in parallel; synthesis must wait for all four to complete.
 
@@ -112,10 +116,11 @@ The `review_id` is generated once at command start and injected into both cartog
 
 ## Implementation Notes
 
-- **review_id generation:** Use Bash `uuidgen` to generate a UUID at command start. This UUID is passed to cartographer as `review_session_id` and to synthesis as `review_id`.
+- **review_id generation:** Use Bash `uuidgen` to generate a UUID at command start and store it in `$SESSION_ID`. This UUID is passed to cartographer as `review_session_id`, to all four tracers as `review_session_id`, and to synthesis as `review_id`.
 - **Pre-pass failures:** If graphify or govulncheck fails, return error immediately without invoking agents.
 - **Agent failures:** If any agent (cartographer, tracer, synthesis) fails, return structured error and stop. Partial results are not acceptable.
 - **Output directory:** All JSON artifacts are written to the working directory (where graphify-out/ is located). The synthesis agent produces `review-report.json` and `review-report.md` in the same directory.
+- **Session ID threading:** All intermediate outputs from cartographer and the four tracers must echo their `review_session_id` field if it was provided in the input. Synthesis uses the session ID to deduplicate findings from the same review run.
 
 ## Example
 

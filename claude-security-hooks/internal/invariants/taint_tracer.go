@@ -40,6 +40,7 @@ var TaintTracerInvariants = []TaintInvariant{
 var TaintTracerJointInvariants = []TaintInputJointInvariant{
 	{ID: "T7", Description: "semgrep.tier in verdict equals semgrep_tier in input", Severity: SeverityHigh, Check: checkT7Joint},
 	{ID: "T8", Description: "interface-typed source requires implementation_calls>0 OR notes explaining skip", Severity: SeverityHigh, Check: checkT8Joint},
+	{ID: "T12", Description: "if input has review_session_id, verdict review_session_id must match exactly", Severity: SeverityHigh, Check: checkT12Joint},
 }
 
 // --- T1 ---
@@ -202,5 +203,22 @@ func checkT10(v *schema.TaintVerdict) []Violation {
 // TODO(phase-5): enforce via SubagentStop telemetry or tool-call summary in verdict.
 func checkT11(v *schema.TaintVerdict) []Violation {
 	_ = v
+	return nil
+}
+
+// --- T12 (JOINT) ---
+func checkT12Joint(in *schema.TaintInput, v *schema.TaintVerdict) []Violation {
+	// If input does not specify a session ID, no check is performed (field is optional).
+	if in.ReviewSessionID == "" {
+		return nil
+	}
+	// If input specifies a session ID, verdict must echo it exactly.
+	if v.ReviewSessionID != in.ReviewSessionID {
+		return []Violation{{
+			Path:     "review_session_id",
+			Expected: in.ReviewSessionID,
+			Actual:   v.ReviewSessionID,
+		}}
+	}
 	return nil
 }

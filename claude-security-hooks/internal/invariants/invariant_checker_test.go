@@ -291,3 +291,74 @@ func TestIC4_NoNewInvariantIDs(t *testing.T) {
 		})
 	}
 }
+
+// TestIC5_SessionIDMatchesInput validates IC5 (JOINT): if input has review_session_id,
+// output review_session_id must match exactly.
+func TestIC5_SessionIDMatchesInput(t *testing.T) {
+	check := locateICJointCheck("IC5")
+	if check == nil {
+		t.Fatalf("IC5 check not found")
+	}
+	cases := []struct {
+		name string
+		in   *schema.InvariantCheckerInput
+		v    *schema.InvariantCheckerVerdict
+		want []invariants.Violation
+	}{
+		{
+			name: "ok: both have matching session ID",
+			in: &schema.InvariantCheckerInput{
+				ReviewSessionID: "uuid-123",
+			},
+			v: &schema.InvariantCheckerVerdict{
+				ReviewSessionID: "uuid-123",
+			},
+			want: nil,
+		},
+		{
+			name: "bad: input has session ID but output mismatches",
+			in: &schema.InvariantCheckerInput{
+				ReviewSessionID: "uuid-123",
+			},
+			v: &schema.InvariantCheckerVerdict{
+				ReviewSessionID: "uuid-456",
+			},
+			want: []invariants.Violation{{Path: "review_session_id", Expected: "uuid-123", Actual: "uuid-456"}},
+		},
+		{
+			name: "ok: input omits session ID (optional field)",
+			in: &schema.InvariantCheckerInput{
+				ReviewSessionID: "",
+			},
+			v: &schema.InvariantCheckerVerdict{
+				ReviewSessionID: "uuid-123",
+			},
+			want: nil,
+		},
+		{
+			name: "ok: both omit session ID",
+			in: &schema.InvariantCheckerInput{
+				ReviewSessionID: "",
+			},
+			v: &schema.InvariantCheckerVerdict{
+				ReviewSessionID: "",
+			},
+			want: nil,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := check.Check(tc.in, tc.v)
+			if len(got) != len(tc.want) {
+				t.Errorf("IC5 check got %d violations, want %d", len(got), len(tc.want))
+				return
+			}
+			if len(got) == 0 {
+				return
+			}
+			if got[0].Path != tc.want[0].Path || got[0].Expected != tc.want[0].Expected || got[0].Actual != tc.want[0].Actual {
+				t.Errorf("IC5 check mismatch: got %+v, want %+v", got[0], tc.want[0])
+			}
+		})
+	}
+}

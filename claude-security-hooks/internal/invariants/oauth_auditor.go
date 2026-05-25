@@ -34,6 +34,7 @@ var OAuthJointInvariants = []OAuthJointInvariant{
 	{ID: "OA5", Description: "oauth_2_1 + pkce feature requires PKCE checks with non-not_applicable status", Severity: SeverityHigh, Check: checkOA5Joint},
 	{ID: "OA6", Description: "oauth_2_0 + authorize_endpoint requires implicit-flow-disallowed check evaluated", Severity: SeverityHigh, Check: checkOA6Joint},
 	{ID: "OA7", Description: "absent feature checks must be not_applicable, never pass", Severity: SeverityHigh, Check: checkOA7Joint},
+	{ID: "OA8", Description: "if input has review_session_id, verdict review_session_id must match exactly", Severity: SeverityHigh, Check: checkOA8Joint},
 }
 
 // oauthCheckFeature maps check_id substring → feature name.
@@ -203,4 +204,21 @@ func checkOA7Joint(in *schema.OAuthInput, v *schema.OAuthVerdict) []Violation {
 		}
 	}
 	return out
+}
+
+// --- OA8 (JOINT) ---
+func checkOA8Joint(in *schema.OAuthInput, v *schema.OAuthVerdict) []Violation {
+	// If input does not specify a session ID, no check is performed (field is optional).
+	if in.ReviewSessionID == "" {
+		return nil
+	}
+	// If input specifies a session ID, verdict must echo it exactly.
+	if v.ReviewSessionID != in.ReviewSessionID {
+		return []Violation{{
+			Path:     "review_session_id",
+			Expected: in.ReviewSessionID,
+			Actual:   v.ReviewSessionID,
+		}}
+	}
+	return nil
 }

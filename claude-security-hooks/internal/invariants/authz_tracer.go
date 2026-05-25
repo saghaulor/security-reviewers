@@ -65,6 +65,12 @@ var AuthzJointInvariants = []AuthzJointInvariant{
 		Severity:    SeverityHigh,
 		Check:       checkAZ5Joint,
 	},
+	{
+		ID:          "AZ7",
+		Description: "if input has review_session_id, verdict review_session_id must match exactly",
+		Severity:    SeverityHigh,
+		Check:       checkAZ7Joint,
+	},
 }
 
 // checkAZ1 verifies that the verdict has required fields and non-negative counts.
@@ -182,5 +188,22 @@ func checkAZ5Joint(in *schema.AuthzInput, v *schema.AuthzVerdict) []Violation {
 // TODO(phase-5): enforce via SubagentStop telemetry or tool-call summary in verdict.
 func checkAZ6(v *schema.AuthzVerdict) []Violation {
 	_ = v
+	return nil
+}
+
+// --- AZ7 (JOINT) ---
+func checkAZ7Joint(in *schema.AuthzInput, v *schema.AuthzVerdict) []Violation {
+	// If input does not specify a session ID, no check is performed (field is optional).
+	if in.ReviewSessionID == "" {
+		return nil
+	}
+	// If input specifies a session ID, verdict must echo it exactly.
+	if v.ReviewSessionID != in.ReviewSessionID {
+		return []Violation{{
+			Path:     "review_session_id",
+			Expected: in.ReviewSessionID,
+			Actual:   v.ReviewSessionID,
+		}}
+	}
 	return nil
 }

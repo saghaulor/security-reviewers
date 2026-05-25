@@ -414,3 +414,44 @@ func TestValidate_InputTooLarge_ClassB(t *testing.T) {
 		t.Fatal("expected non-nil error for input > 1 MB")
 	}
 }
+
+func TestValidate_PostToolUseEventWithStatus_NoH7Block(t *testing.T) {
+	// H7 regression test: PostToolUseEvent now includes a "status" field from the harness.
+	// The struct should accept it without DisallowUnknownFields causing an H7 block.
+	tmpdir := setupWorkspaceTemp(t)
+	prev, _ := os.Getwd()
+	os.Chdir(tmpdir)
+	defer os.Chdir(prev)
+
+	// Create a non-security agent event (should pass silently regardless)
+	ev := PostToolUseEvent{
+		SessionID:      "s1",
+		TranscriptPath: "t1",
+		CWD:            tmpdir,
+		HookEventName:  "PostToolUse",
+		ToolName:       "Task",
+		ToolInput: TaskToolInput{
+			SubagentType: "general-purpose",
+			Prompt:       "any prompt",
+		},
+		ToolUseID: "u1",
+		ToolResponse: ToolResponse{
+			Content: json.RawMessage(`"any content"`),
+			Type:    "text",
+		},
+		Status: "success", // New field from harness
+	}
+	body, _ := json.Marshal(ev)
+	stdin := bytes.NewReader(body)
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+
+	err := Validate(stdin, stdout, stderr)
+	if err != nil {
+		t.Errorf("Validate returned error: %v", err)
+	}
+	// Should not contain H7 parse error
+	if bytes.Contains(stdout.Bytes(), []byte("H7")) {
+		t.Errorf("expected no H7 block, got: %s", stdout.String())
+	}
+}

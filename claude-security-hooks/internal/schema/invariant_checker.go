@@ -2,8 +2,9 @@ package schema
 
 // InvariantCheckerInput represents the input to the invariant checker.
 type InvariantCheckerInput struct {
-	FlowName   string            `json:"flow_name"`
-	Invariants []InputInvariant  `json:"invariants"`
+	FlowName          string            `json:"flow_name"`
+	Invariants        []InputInvariant  `json:"invariants"`
+	ReviewSessionID   string            `json:"review_session_id,omitempty"`
 }
 
 type InputInvariant struct {
@@ -14,8 +15,9 @@ type InputInvariant struct {
 
 // InvariantCheckerVerdict represents the output of the invariant checker.
 type InvariantCheckerVerdict struct {
-	FlowName string            `json:"flow_name"`
-	Results  []InvariantResult `json:"results,omitempty"`
+	FlowName          string            `json:"flow_name"`
+	Results           []InvariantResult `json:"results,omitempty"`
+	ReviewSessionID   string            `json:"review_session_id,omitempty"`
 }
 
 type InvariantResult struct {

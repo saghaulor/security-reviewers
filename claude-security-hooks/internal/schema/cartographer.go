@@ -2,17 +2,18 @@ package schema
 
 // CartographerIndex represents the go-index/v1 schema.
 type CartographerIndex struct {
-	SchemaVersion    string                     `json:"schema_version"`
-	GraphVersion     string                     `json:"graph_version"`
-	RoutersDetected  []string                   `json:"routers_detected,omitempty"`
-	Entrypoints      []Entrypoint               `json:"entrypoints,omitempty"`
-	SinksByKind      map[string][]SinkLocation  `json:"sinks_by_kind,omitempty"` // Keys are kind enum values
-	AuthzPrimitives  []AuthzPrimitive           `json:"authz_primitives,omitempty"`
-	OAuthLocations   OAuthLocations             `json:"oauth_locations,omitempty"`
-	PaymentSurface   PaymentSurface             `json:"payment_surface,omitempty"`
-	VulnDeps         VulnDeps                   `json:"vuln_deps,omitempty"`
-	AmbiguousNodes   []AmbiguousNode            `json:"ambiguous_nodes,omitempty"`
-	Warnings         []string                   `json:"warnings,omitempty"`
+	SchemaVersion     string                     `json:"schema_version"`
+	GraphVersion      string                     `json:"graph_version"`
+	RoutersDetected   []string                   `json:"routers_detected,omitempty"`
+	Entrypoints       []Entrypoint               `json:"entrypoints,omitempty"`
+	SinksByKind       map[string][]SinkLocation  `json:"sinks_by_kind,omitempty"` // Keys are kind enum values
+	AuthzPrimitives   []AuthzPrimitive           `json:"authz_primitives,omitempty"`
+	OAuthLocations    OAuthLocations             `json:"oauth_locations,omitempty"`
+	PaymentSurface    PaymentSurface             `json:"payment_surface,omitempty"`
+	VulnDeps          VulnDeps                   `json:"vuln_deps,omitempty"`
+	AmbiguousNodes    []AmbiguousNode            `json:"ambiguous_nodes,omitempty"`
+	Warnings          []string                   `json:"warnings,omitempty"`
+	ReviewSessionID   string                     `json:"review_session_id,omitempty"`
 }
 
 type Entrypoint struct {

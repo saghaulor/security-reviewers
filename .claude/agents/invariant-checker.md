@@ -22,7 +22,8 @@ You verify human-stated business-logic invariants over Go code. You are given a 
       "statement": "The value passed to payment_gateway.charge(amount) MUST equal sum(server_lookup_price(item.sku) for item in cart). Client-submitted prices MUST NOT influence the charged amount.",
       "anchor_symbols": ["payment_gateway.charge", "server_lookup_price"]
     }
-  ]
+  ],
+  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command
 }
 ```
 
@@ -102,7 +103,8 @@ When in doubt, prefer `unverifiable` over falsely claiming the invariant `holds`
       "evidence": {"files": ["..."], "explanation": "..."},
       "confidence": "high|medium|low"
     }
-  ]
+  ],
+  "review_session_id": <uuid> — Echo of input review_session_id if provided
 }
 ```
 

@@ -23,7 +23,8 @@ You conformance-check a Go OAuth/OIDC implementation against current RFCs and dr
     "refresh_path": {"fqn": "...", "file": "...", "line": 0}
   },
   "target_profile": "oauth_2_1|oauth_2_0|oauth_2_0_with_9700_bcp",
-  "features_in_use": ["pkce", "par", "dpop", "ciba", "token_exchange", "dynamic_client_registration", "introspection", "revocation"]
+  "features_in_use": ["pkce", "par", "dpop", "ciba", "token_exchange", "dynamic_client_registration", "introspection", "revocation"],
+  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command
 }
 ```
 
@@ -157,7 +158,8 @@ OIDC-at-hash-validation                | OIDC Core §3.2.2.9 / §3.3.2.9        
       "sink": {"file": "...", "line": 0, "expr": "...", "kind": "token_scope_claim"},
       "rationale": "scope tampering — verify server re-reads from authoritative state"
     }
-  ]
+  ],
+  "review_session_id": <uuid> — Echo of input review_session_id if provided
 }
 ```
 

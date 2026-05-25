@@ -27,6 +27,18 @@ func locateOAuthJointCheck(v *schema.OAuthVerdict, checkID string) *schema.Check
 	return locateOAuthCheck(v, checkID)
 }
 
+// locateOAuthJointInvariant retrieves the Check function from OAuthJointInvariants registry by ID.
+func locateOAuthJointInvariant(t *testing.T, id string) func(*schema.OAuthInput, *schema.OAuthVerdict) []invariants.Violation {
+	t.Helper()
+	for _, inv := range invariants.OAuthJointInvariants {
+		if inv.ID == id {
+			return inv.Check
+		}
+	}
+	t.Fatalf("%s not registered in OAuthJointInvariants", id)
+	return nil
+}
+
 func TestOA1_VerdictRequiredFields(t *testing.T) {
 	cases := []struct {
 		name string
@@ -576,6 +588,67 @@ func TestOA7_AbsentFeatureMustBeNotApplicable_NotPass(t *testing.T) {
 			got := checkOA7(tc.in, tc.v)
 			if diff := cmp.Diff(tc.want, got, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("OA7 check mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+// TestOA8_SessionIDMatchesInput validates OA8 (JOINT): if input has review_session_id,
+// output review_session_id must match exactly.
+func TestOA8_SessionIDMatchesInput(t *testing.T) {
+	check := locateOAuthJointInvariant(t, "OA8")
+	cases := []struct {
+		name string
+		in   *schema.OAuthInput
+		v    *schema.OAuthVerdict
+		want []invariants.Violation
+	}{
+		{
+			name: "ok: both have matching session ID",
+			in: &schema.OAuthInput{
+				ReviewSessionID: "uuid-123",
+			},
+			v: &schema.OAuthVerdict{
+				ReviewSessionID: "uuid-123",
+			},
+			want: nil,
+		},
+		{
+			name: "bad: input has session ID but output mismatches",
+			in: &schema.OAuthInput{
+				ReviewSessionID: "uuid-123",
+			},
+			v: &schema.OAuthVerdict{
+				ReviewSessionID: "uuid-456",
+			},
+			want: []invariants.Violation{{Path: "review_session_id", Expected: "uuid-123", Actual: "uuid-456"}},
+		},
+		{
+			name: "ok: input omits session ID (optional field)",
+			in: &schema.OAuthInput{
+				ReviewSessionID: "",
+			},
+			v: &schema.OAuthVerdict{
+				ReviewSessionID: "uuid-123",
+			},
+			want: nil,
+		},
+		{
+			name: "ok: both omit session ID",
+			in: &schema.OAuthInput{
+				ReviewSessionID: "",
+			},
+			v: &schema.OAuthVerdict{
+				ReviewSessionID: "",
+			},
+			want: nil,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := check(tc.in, tc.v)
+			if diff := cmp.Diff(tc.want, got, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("OA8 check mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
