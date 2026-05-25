@@ -39,3 +39,6 @@ review-report.json
 review-report.md
 govulncheck.json
 graphify-out/
+
+# Local settings
+.claude/settings.local.json
