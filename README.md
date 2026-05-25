@@ -2,20 +2,34 @@
 
 A Claude Code plugin for systematic security review of Go services. Combines multi-agent analysis (cartography, taint tracing, authorization verification, OAuth auditing, invariant checking, synthesis) with mechanical output validation.
 
-**Status:** Pre-release. See `.planning/ROADMAP.md` for the 6-phase implementation plan.
+**Status:** ✅ Complete (Phase 8: Automated E2E Testing). Production-ready for installation across machines.
+
+## Installation
+
+See the [SKILL.md](./.claude/skills/security-review/SKILL.md) file for complete documentation, or run the automated setup:
+
+```bash
+git clone git@github.com:saghaulor/security-reviewers.git
+cd security-reviewers
+./scripts/install.sh
+```
+
+For step-by-step manual setup, see [INSTALL.md](./INSTALL.md).
 
 ## Quick Start
 
-Once the plugin is ready (Phase 3+):
+Once installed, scan your Go service for security vulnerabilities:
 
 ```bash
-/security-review
+/security-review /path/to/your/go/service
 ```
 
 This runs the full workflow:
 1. Build a structural index of your Go service (`go-cartographer`)
 2. Dispatch parallel tracers for taint-based flows, authorization, OAuth conformance
-3. Synthesize findings into a machine-readable report
+3. Synthesize findings into a machine-readable JSON report
+
+Output: `review-report.json` with all findings, plus `review-report.md` with human-readable recommendations.
 
 ## Components
 
