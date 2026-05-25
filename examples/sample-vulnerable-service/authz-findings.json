@@ -1,0 +1,90 @@
+{
+  "summary": {
+    "routes_total": 8,
+    "protected": 0,
+    "missing": 6,
+    "weak": 2,
+    "idor_risk": 1,
+    "public_intentional": 0
+  },
+  "findings": [
+    {
+      "route": "GET /api/user",
+      "issue": "missing_authz",
+      "evidence": { "file": "handlers.go", "line": 111, "explanation": "No middleware in chain. Handler reads id from query param and concatenates directly into SQL (db.Query at line 120). Unauthenticated callers can query any user record." },
+      "confidence": "high"
+    },
+    {
+      "route": "DELETE /user/:id",
+      "issue": "missing_authz",
+      "evidence": { "file": "handlers.go", "line": 129, "explanation": "No middleware in chain. Handler extracts :id from URL and executes 'DELETE FROM users WHERE id=?' (db.Exec at line 135) with no authentication or ownership check. Any unauthenticated caller can permanently delete any user row." },
+      "confidence": "high"
+    },
+    {
+      "route": "DELETE /user/:id",
+      "issue": "idor_risk",
+      "evidence": { "file": "handlers.go", "line": 131, "explanation": "userID := c.Param(\"id\") used directly as deletion predicate. Even with authentication, no ownership check compares caller identity to targeted resource ID — horizontal privilege escalation." },
+      "confidence": "high"
+    },
+    {
+      "route": "GET /oauth/authorize",
+      "issue": "missing_authz",
+      "evidence": { "file": "handlers.go", "line": 147, "explanation": "No middleware. Accepts arbitrary client_id and scope from unauthenticated callers and stores them in server-side state (StoreAuthRequest) without verifying the requesting user is authenticated." },
+      "confidence": "high"
+    },
+    {
+      "route": "GET /consent",
+      "issue": "missing_authz",
+      "evidence": { "file": "handlers.go", "line": 167, "explanation": "No middleware. Consent form renders with no session/auth check. code parameter reflected into HTML without escaping (line 180) — also XSS. Any unauthenticated party can drive the consent flow." },
+      "confidence": "high"
+    },
+    {
+      "route": "POST /oauth/token",
+      "issue": "missing_authz",
+      "evidence": { "file": "handlers.go", "line": 210, "explanation": "No middleware in chain. Token endpoint is unauthenticated (no client authentication)." },
+      "confidence": "high"
+    },
+    {
+      "route": "POST /oauth/token",
+      "issue": "bypass_path",
+      "evidence": { "file": "handlers.go", "line": 216, "explanation": "scopeFromForm read from attacker-controlled POST body. authRequest retrieved (line 220) but its stored Scope is never compared against scopeFromForm. Attacker-supplied scope flows directly to token response — scope escalation to 'admin'." },
+      "confidence": "high"
+    },
+    {
+      "route": "GET /api/advanced-search",
+      "issue": "missing_authz",
+      "evidence": { "file": "handlers.go", "line": 254, "explanation": "No middleware. Unauthenticated callers reach the 4-hop SQL injection sink (callChainSQLiHandler chain to db.Query)." },
+      "confidence": "high"
+    },
+    {
+      "route": "POST /transfer",
+      "issue": "non_blocking_middleware",
+      "evidence": { "file": "main.go", "line": 11, "explanation": "authMiddleware always calls c.Next() with no failure-return path. Body is c.Set(\"user_id\", \"user123\"); c.Next() — no c.Abort(), no 401/403. Identity-setting only, zero enforcement." },
+      "confidence": "high"
+    },
+    {
+      "route": "POST /transfer",
+      "issue": "idor_risk",
+      "evidence": { "file": "handlers.go", "line": 279, "explanation": "recipientID read from c.Query(\"to\") with no ownership/relationship check. Any caller can debit userID and credit any arbitrary recipientID. db.Exec at lines 285-286 executes both sides against attacker-supplied accounts." },
+      "confidence": "high"
+    },
+    {
+      "route": "POST /admin/config",
+      "issue": "non_blocking_middleware",
+      "evidence": { "file": "main.go", "line": 11, "explanation": "authMiddleware always calls c.Next() unconditionally; provides no blocking enforcement for the admin endpoint." },
+      "confidence": "high"
+    },
+    {
+      "route": "POST /admin/config",
+      "issue": "weak_authz",
+      "evidence": { "file": "handlers.go", "line": 319, "explanation": "extractUserFromToken (line 301) decodes a JWT but does not validate the IsAdmin claim against any server-side authz service. Handler gates on client-supplied user.IsAdmin (line 319). Attacker forging a token with IsAdmin:true reaches db.Exec at line 321." },
+      "confidence": "high"
+    }
+  ],
+  "weak_primitives": [
+    {
+      "fqn": "security-reviewer/examples/sample-vulnerable-service.authMiddleware",
+      "reason": "Body is c.Set(\"user_id\", \"user123\"); c.Next() — always calls Next with no conditional abort, never writes 401/403. Non-blocking identity-setter, not a blocking authz primitive."
+    }
+  ]
+}

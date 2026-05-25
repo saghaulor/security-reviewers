@@ -1,0 +1,31 @@
+{
+  "verdict": "sanitized",
+  "confidence": "high",
+  "class": "sql_injection",
+  "exploitable": false,
+  "source": {
+    "file": "handlers.go",
+    "line": 320,
+    "expr": "c.PostForm(\"config\")",
+    "kind": "http_form"
+  },
+  "sink": {
+    "file": "handlers.go",
+    "line": 321,
+    "expr": "db.Exec(\"UPDATE system_config SET value = ? WHERE key = 'admin_setting'\", newConfig)",
+    "kind": "sql_exec"
+  },
+  "path": [
+    { "file": "handlers.go", "line": 320, "expr": "newConfig := c.PostForm(\"config\")", "step": "source" },
+    { "file": "handlers.go", "line": 321, "expr": "db.Exec(\"UPDATE system_config SET value = ? WHERE key = 'admin_setting'\", newConfig)", "step": "sink", "callee": "(*database/sql.DB).Exec", "sanitizer_kind": "sql_placeholder" }
+  ],
+  "sanitizers": [
+    { "kind": "sql_placeholder", "file": "handlers.go", "line": 321, "description": "Constant SQL template with ? placeholder; newConfig bound as a parameter" }
+  ],
+  "gating_conditions": [
+    { "file": "handlers.go", "line": 319, "expr": "if user.IsAdmin", "description": "Gated by user.IsAdmin from extractUserFromToken (handlers.go:301-305), which does NOT validate JWT signatures/claims (BUG D-03). Attacker can forge a token with IsAdmin:true to reach this path — privilege escalation — but the SQL sink itself is parameterized and not injectable." }
+  ],
+  "route": "POST /admin/config",
+  "handler": "adminConfigHandler",
+  "notes": "SQL injection is NOT exploitable — db.Exec uses a constant template with a ? placeholder. NOTE: the gating condition relies on an unvalidated JWT claim (BUG D-03, privilege escalation) handled by authz-findings.json."
+}

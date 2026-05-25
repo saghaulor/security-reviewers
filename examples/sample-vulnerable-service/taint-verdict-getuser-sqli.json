@@ -1,0 +1,28 @@
+{
+  "verdict": "exploitable",
+  "confidence": "high",
+  "class": "sql_injection",
+  "exploitable": true,
+  "source": {
+    "file": "handlers.go",
+    "line": 113,
+    "expr": "c.Query(\"id\")",
+    "kind": "http_query"
+  },
+  "sink": {
+    "file": "handlers.go",
+    "line": 120,
+    "expr": "db.Query(query)",
+    "kind": "sql_exec"
+  },
+  "path": [
+    { "file": "handlers.go", "line": 113, "expr": "c.Query(\"id\")", "step": "source" },
+    { "file": "handlers.go", "line": 113, "expr": "userID := c.Query(\"id\")", "step": "assign" },
+    { "file": "handlers.go", "line": 116, "expr": "query := \"SELECT * FROM users WHERE id=\" + userID", "step": "assign" },
+    { "file": "handlers.go", "line": 120, "expr": "db.Query(query)", "step": "sink", "callee": "database/sql.(*DB).Query" }
+  ],
+  "sanitizers": [],
+  "route": "GET /api/user",
+  "handler": "getUserHandler",
+  "notes": "Intrafile, single-function, zero-branch taint flow. c.Query(\"id\") is concatenated into a SQL query string via + (line 116), then passed as the first positional argument to db.Query() (line 120). No parameterization (no ? or $1 placeholder), no prepared statement, no input validation, no middleware on the route. Example payload: GET /api/user?id=1 OR 1=1--."
+}

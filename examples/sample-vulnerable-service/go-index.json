@@ -1,0 +1,540 @@
+{
+  "schema_version": "go-index/v1",
+  "graph_version": "43f8ea69486de28304ed2ed6a1828d760753b191d04b3d6327cede2f3a338a07",
+  "routers_detected": [
+    "gin"
+  ],
+  "entrypoints": [
+    {
+      "router": "gin",
+      "method": "GET",
+      "path": "/api/user",
+      "handler": {
+        "fqn": "security-reviewer/examples/sample-vulnerable-service.getUserHandler",
+        "file": "handlers.go",
+        "line": 111
+      },
+      "middleware_chain": []
+    },
+    {
+      "router": "gin",
+      "method": "DELETE",
+      "path": "/user/:id",
+      "handler": {
+        "fqn": "security-reviewer/examples/sample-vulnerable-service.deleteUserHandler",
+        "file": "handlers.go",
+        "line": 129
+      },
+      "middleware_chain": []
+    },
+    {
+      "router": "gin",
+      "method": "GET",
+      "path": "/oauth/authorize",
+      "handler": {
+        "fqn": "security-reviewer/examples/sample-vulnerable-service.oauthAuthorizeHandler",
+        "file": "handlers.go",
+        "line": 147
+      },
+      "middleware_chain": []
+    },
+    {
+      "router": "gin",
+      "method": "GET",
+      "path": "/consent",
+      "handler": {
+        "fqn": "security-reviewer/examples/sample-vulnerable-service.consentHandler",
+        "file": "handlers.go",
+        "line": 167
+      },
+      "middleware_chain": []
+    },
+    {
+      "router": "gin",
+      "method": "POST",
+      "path": "/oauth/token",
+      "handler": {
+        "fqn": "security-reviewer/examples/sample-vulnerable-service.oauthTokenHandler",
+        "file": "handlers.go",
+        "line": 210
+      },
+      "middleware_chain": []
+    },
+    {
+      "router": "gin",
+      "method": "GET",
+      "path": "/api/advanced-search",
+      "handler": {
+        "fqn": "security-reviewer/examples/sample-vulnerable-service.callChainSQLiHandler",
+        "file": "handlers.go",
+        "line": 254
+      },
+      "middleware_chain": []
+    },
+    {
+      "router": "gin",
+      "method": "POST",
+      "path": "/transfer",
+      "handler": {
+        "fqn": "security-reviewer/examples/sample-vulnerable-service.transferFundsHandler",
+        "file": "handlers.go",
+        "line": 274
+      },
+      "middleware_chain": [
+        {
+          "fqn": "security-reviewer/examples/sample-vulnerable-service.authMiddleware",
+          "kind": "route",
+          "file": "main.go",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "router": "gin",
+      "method": "POST",
+      "path": "/admin/config",
+      "handler": {
+        "fqn": "security-reviewer/examples/sample-vulnerable-service.adminConfigHandler",
+        "file": "handlers.go",
+        "line": 312
+      },
+      "middleware_chain": [
+        {
+          "fqn": "security-reviewer/examples/sample-vulnerable-service.authMiddleware",
+          "kind": "route",
+          "file": "main.go",
+          "line": 11
+        }
+      ]
+    }
+  ],
+  "sinks_by_kind": {
+    "sql_exec": [
+      {
+        "file": "handlers.go",
+        "line": 120,
+        "callee": "db.Query"
+      },
+      {
+        "file": "handlers.go",
+        "line": 135,
+        "callee": "db.Exec"
+      },
+      {
+        "file": "handlers.go",
+        "line": 285,
+        "callee": "db.Exec"
+      },
+      {
+        "file": "handlers.go",
+        "line": 286,
+        "callee": "db.Exec"
+      },
+      {
+        "file": "handlers.go",
+        "line": 321,
+        "callee": "db.Exec"
+      },
+      {
+        "file": "handlers.go",
+        "line": 80,
+        "callee": "db.Query"
+      }
+    ],
+    "cmd_exec": [],
+    "http_client": [],
+    "fs_path": [],
+    "deserialize": [],
+    "template_render": [],
+    "xml_parse": []
+  },
+  "authz_primitives": [],
+  "oauth_locations": {
+    "authorize_endpoint": {
+      "fqn": "security-reviewer/examples/sample-vulnerable-service.oauthAuthorizeHandler",
+      "file": "handlers.go",
+      "line": 147
+    },
+    "token_endpoint": {
+      "fqn": "security-reviewer/examples/sample-vulnerable-service.oauthTokenHandler",
+      "file": "handlers.go",
+      "line": 210
+    },
+    "callback_handler": {
+      "fqn": "security-reviewer/examples/sample-vulnerable-service.consentHandler",
+      "file": "handlers.go",
+      "line": 167
+    },
+    "token_storage": {
+      "fqn": "security-reviewer/examples/sample-vulnerable-service.StoreAuthRequest",
+      "file": "oauth_state.go",
+      "line": 29
+    },
+    "refresh_path": null
+  },
+  "payment_surface": {
+    "files": [
+      "handlers.go"
+    ],
+    "cluster_id": null,
+    "confidence": "inferred"
+  },
+  "vuln_deps": {
+    "available": true,
+    "findings": [
+      {
+        "osv_id": "GO-2024-2687",
+        "package": "golang.org/x/net/http2",
+        "symbol": "golang.org/x/net/http2.String",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "github.com/gin-gonic/gin.debugPrint",
+          "fmt.Fprintf",
+          "fmt.doPrintf",
+          "fmt.printArg",
+          "fmt.handleMethods",
+          "golang.org/x/net/http2.String"
+        ]
+      },
+      {
+        "osv_id": "GO-2025-4007",
+        "package": "crypto/x509",
+        "symbol": "crypto/x509.ParseCertificate",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "github.com/gin-gonic/gin.resolveAddress",
+          "os.Getenv",
+          "syscall.Getenv",
+          "sync.Do",
+          "sync.doSlow",
+          "crypto/x509.AppendCertsFromPEM$1$1",
+          "crypto/x509.ParseCertificate"
+        ]
+      },
+      {
+        "osv_id": "GO-2025-4008",
+        "package": "crypto/tls",
+        "symbol": "crypto/tls.HandshakeContext",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "crypto/tls.HandshakeContext"
+        ]
+      },
+      {
+        "osv_id": "GO-2025-4009",
+        "package": "encoding/pem",
+        "symbol": "encoding/pem.Decode",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "github.com/gin-gonic/gin.resolveAddress",
+          "os.Getenv",
+          "syscall.Getenv",
+          "sync.Do",
+          "sync.doSlow",
+          "crypto/x509.initSystemRoots",
+          "crypto/x509.loadSystemRoots",
+          "crypto/x509.AppendCertsFromPEM",
+          "encoding/pem.Decode"
+        ]
+      },
+      {
+        "osv_id": "GO-2025-4010",
+        "package": "net/url",
+        "symbol": "net/url.Parse",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "net/http.ServeHTTP",
+          "net/http.ServeHTTP",
+          "net/http.ServeHTTP",
+          "net/http.Redirect",
+          "net/url.Parse"
+        ]
+      },
+      {
+        "osv_id": "GO-2025-4011",
+        "package": "encoding/asn1",
+        "symbol": "encoding/asn1.Unmarshal",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "github.com/gin-gonic/gin.resolveAddress",
+          "os.Getenv",
+          "syscall.Getenv",
+          "sync.Do",
+          "sync.doSlow",
+          "crypto/x509.AppendCertsFromPEM$1$1",
+          "crypto/x509.ParseCertificate",
+          "crypto/x509.parseCertificate",
+          "crypto/x509.getSignatureAlgorithmFromAI",
+          "encoding/asn1.Unmarshal"
+        ]
+      },
+      {
+        "osv_id": "GO-2025-4013",
+        "package": "crypto/x509",
+        "symbol": "crypto/x509.Verify",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "crypto/tls.HandshakeContext",
+          "crypto/tls.handshakeContext",
+          "crypto/tls.clientHandshake",
+          "crypto/tls.handshake",
+          "crypto/tls.readServerCertificate",
+          "crypto/tls.verifyServerCertificate",
+          "crypto/x509.Verify"
+        ]
+      },
+      {
+        "osv_id": "GO-2025-4155",
+        "package": "crypto/x509",
+        "symbol": "crypto/x509.VerifyHostname",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "crypto/tls.HandshakeContext",
+          "crypto/tls.handshakeContext",
+          "crypto/tls.clientHandshake",
+          "crypto/tls.loadSession",
+          "crypto/x509.VerifyHostname"
+        ]
+      },
+      {
+        "osv_id": "GO-2025-4175",
+        "package": "crypto/x509",
+        "symbol": "crypto/x509.Verify",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "crypto/tls.HandshakeContext",
+          "crypto/tls.handshakeContext",
+          "crypto/tls.clientHandshake",
+          "crypto/tls.handshake",
+          "crypto/tls.readServerCertificate",
+          "crypto/tls.verifyServerCertificate",
+          "crypto/x509.Verify"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4337",
+        "package": "crypto/tls",
+        "symbol": "crypto/tls.Read",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "bufio.Peek",
+          "bufio.fill",
+          "crypto/tls.Read"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4340",
+        "package": "crypto/tls",
+        "symbol": "crypto/tls.Write",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "github.com/gin-gonic/gin.debugPrint",
+          "fmt.Fprintf",
+          "bufio.Write",
+          "net/http.Write",
+          "net/http.http2writeWithByteTimeout",
+          "crypto/tls.Write"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4341",
+        "package": "net/url",
+        "symbol": "net/url.ParseQuery",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "net/http.ServeHTTP",
+          "github.com/gin-gonic/gin.ServeHTTP",
+          "github.com/gin-gonic/gin.handleHTTPRequest",
+          "github.com/gin-gonic/gin.Next",
+          "security-reviewer/examples/sample-vulnerable-service.oauthTokenHandler",
+          "github.com/gin-gonic/gin.GetPostForm",
+          "github.com/gin-gonic/gin.GetPostFormArray",
+          "github.com/gin-gonic/gin.initFormCache",
+          "net/http.ParseMultipartForm",
+          "net/http.ParseForm",
+          "net/url.ParseQuery"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4601",
+        "package": "net/url",
+        "symbol": "net/url.ParseRequestURI",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "net/http.readRequest",
+          "net/http.readRequest",
+          "net/url.ParseRequestURI"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4602",
+        "package": "os",
+        "symbol": "os.ReadDir",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "github.com/gin-gonic/gin.resolveAddress",
+          "os.Getenv",
+          "syscall.Getenv",
+          "sync.Do",
+          "sync.doSlow",
+          "crypto/x509.initSystemRoots",
+          "crypto/x509.loadSystemRoots",
+          "crypto/x509.readUniqueDirectoryEntries",
+          "os.ReadDir"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4865",
+        "package": "html/template",
+        "symbol": "html/template.Parse",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.init",
+          "github.com/gin-gonic/gin.init",
+          "github.com/gin-gonic/gin/binding.init",
+          "github.com/ugorji/go/codec.init",
+          "net/rpc.init",
+          "html/template.Parse"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4870",
+        "package": "crypto/tls",
+        "symbol": "crypto/tls.Read",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "bufio.Peek",
+          "bufio.fill",
+          "crypto/tls.Read"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4946",
+        "package": "crypto/x509",
+        "symbol": "crypto/x509.Verify",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "crypto/tls.HandshakeContext",
+          "crypto/tls.handshakeContext",
+          "crypto/tls.clientHandshake",
+          "crypto/tls.handshake",
+          "crypto/tls.readServerCertificate",
+          "crypto/tls.verifyServerCertificate",
+          "crypto/x509.Verify"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4947",
+        "package": "crypto/x509",
+        "symbol": "crypto/x509.Verify",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net/http.Serve",
+          "net/http.serve",
+          "crypto/tls.HandshakeContext",
+          "crypto/tls.handshakeContext",
+          "crypto/tls.clientHandshake",
+          "crypto/tls.handshake",
+          "crypto/tls.readServerCertificate",
+          "crypto/tls.verifyServerCertificate",
+          "crypto/x509.Verify"
+        ]
+      },
+      {
+        "osv_id": "GO-2026-4971",
+        "package": "net",
+        "symbol": "net.Listen",
+        "reachable": true,
+        "call_stack": [
+          "security-reviewer/examples/sample-vulnerable-service.main",
+          "github.com/gin-gonic/gin.Run",
+          "net/http.ListenAndServe",
+          "net/http.ListenAndServe",
+          "net.Listen"
+        ]
+      }
+    ]
+  },
+  "ambiguous_nodes": [],
+  "warnings": [
+    "mcp_servers_unavailable: graphify/gopls/opengrep MCP tools not reachable; analysis performed via static source read of a fully-readable small module. Entrypoints, sinks, OAuth and authz classifications are grounded in verified file/line evidence.",
+    "no_ambiguous_edges_in_graph: graph.json contains only 'contains' and 'calls' edge types; no AMBIGUOUS edges to surface.",
+    "oauth2_dependency_unused: golang.org/x/oauth2 is declared in go.mod but not imported by any source file; OAuth surface is a hand-rolled gin implementation."
+  ]
+}

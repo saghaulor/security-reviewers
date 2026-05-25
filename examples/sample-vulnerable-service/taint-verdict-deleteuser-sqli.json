@@ -1,0 +1,29 @@
+{
+  "verdict": "sanitized",
+  "confidence": "high",
+  "class": "sql_injection",
+  "exploitable": false,
+  "source": {
+    "file": "handlers.go",
+    "line": 131,
+    "expr": "c.Param(\"id\")",
+    "kind": "http_path_param"
+  },
+  "sink": {
+    "file": "handlers.go",
+    "line": 135,
+    "expr": "db.Exec(\"DELETE FROM users WHERE id=?\", userID)",
+    "kind": "sql_exec"
+  },
+  "path": [
+    { "file": "handlers.go", "line": 131, "expr": "c.Param(\"id\")", "step": "source" },
+    { "file": "handlers.go", "line": 131, "expr": "userID := c.Param(\"id\")", "step": "assign" },
+    { "file": "handlers.go", "line": 135, "expr": "db.Exec(\"DELETE FROM users WHERE id=?\", userID)", "step": "sink", "callee": "(*database/sql.DB).Exec", "sanitizer_kind": "sql_placeholder" }
+  ],
+  "sanitizers": [
+    { "kind": "sql_placeholder", "file": "handlers.go", "line": 135, "description": "database/sql parameterized query with ? placeholder; userID bound as a separate argument, not concatenated" }
+  ],
+  "route": "DELETE /user/:id",
+  "handler": "deleteUserHandler",
+  "notes": "SQL injection is NOT exploitable here — the query uses a constant template with a ? placeholder and userID is bound as a parameter. NOTE: this handler carries a separate, serious authorization bypass (no authz middleware on a destructive DELETE) handled by the authz tracer (authz-findings.json)."
+}
