@@ -42,3 +42,4 @@ graphify-out/
 
 # Local settings
 .claude/settings.local.json
+.current-review

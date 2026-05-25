@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "graphify": {
+      "type": "stdio",
+      "command": "/home/saghaulor/code/security_reviewer/scripts/graphify-mcp.sh"
+    },
+    "opengrep": {
+      "type": "sse",
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}

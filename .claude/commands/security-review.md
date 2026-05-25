@@ -18,9 +18,14 @@ Run `Bash: .claude/hooks/bin/claude-security-hooks uuid` from the project root a
 
 (`uuidgen` is not used because it may not be installed; `claude-security-hooks uuid` uses `crypto/rand` and is always available.)
 
-## Step 2: Delete stale intermediate files
+## Step 2: Record target and delete stale intermediate files
 
-Remove any existing intermediate files from the previous run. These files from any prior run are INVALID for this run because they were produced under a different SESSION_ID.
+First, write TARGET_DIR to `.current-review` in the project root so the graphify MCP server wrapper knows which graph to serve:
+```
+Bash: echo "TARGET_DIR" > /home/saghaulor/code/security_reviewer/.current-review
+```
+
+Then remove any existing intermediate files from the previous run. These files from any prior run are INVALID for this run because they were produced under a different SESSION_ID.
 
 Run the following (ignore errors if files don't exist):
 ```
@@ -49,13 +54,18 @@ If Docker is unavailable or the image doesn't exist, **stop with a clear error m
 
 Run these two commands with TARGET_DIR as the working directory:
 
-1. `Bash (cwd=TARGET_DIR): graphify build .`
+1. `Bash: graphify update TARGET_DIR`
    - This produces `TARGET_DIR/graphify-out/graph.json`.
    - If it fails, stop with error.
 
-2. `Bash (cwd=TARGET_DIR): govulncheck -json ./... > govulncheck.json 2>govulncheck.err`
-   - If `govulncheck` is not installed, write `{"available":false}` to `govulncheck.json` and continue.
-   - If it fails for other reasons, stop with error.
+2. Run govulncheck via Docker (always — do not rely on a local govulncheck install):
+   ```
+   Bash: docker run --rm -v TARGET_DIR:/workspace -w /workspace golang:latest \
+     sh -c "go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck -json ./... > govulncheck.json 2>govulncheck.err"
+   ```
+   - If Docker or the image is unavailable, write `{"available":false}` to `TARGET_DIR/govulncheck.json` and continue.
+   - If govulncheck exits non-zero (vulnerabilities found), that is expected — the output is still valid JSON; continue.
+   - If it fails for other reasons (network, permission), write `{"available":false}` and continue.
 
 ## Step 5: Run cartographer (sequential)
 
