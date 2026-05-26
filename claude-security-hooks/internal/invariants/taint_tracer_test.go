@@ -607,3 +607,121 @@ func TestT12_SessionIDMatchesInput(t *testing.T) {
 		})
 	}
 }
+
+// --- B2: T6 Ambiguous Verdict Tests ---
+
+// TestT6_AmbiguousVerdictNoEvidence_ShouldPass verifies that T6 should NOT block
+// an honest "ambiguous" verdict when tools could not run (e.g., tools unavailable).
+// Currently T6 blocks this verdict → test is RED (B2 blocker).
+// After Wave 1, T6 will be modified to skip the check for verdict="ambiguous".
+func TestT6_AmbiguousVerdictNoEvidence_ShouldPass(t *testing.T) {
+	check := locateTaintCheck(t, "T6")
+
+	// Case: verdict=ambiguous, no tools ran, no gopls calls made.
+	// This is an honest verdict: the agent could not determine taintability.
+	// T6 should NOT fire in this case.
+	v := &schema.TaintVerdict{
+		Verdict:    "ambiguous",
+		Confidence: "low",
+		Semgrep: schema.SemgrepEvidence{
+			Ran:     false,
+			Finding: false,
+		},
+		Gopls: schema.GoplsEvidence{
+			ReferencesCalls: 0,
+		},
+	}
+
+	violations := check(v)
+
+	// Currently this is RED: T6 fires on "ambiguous" with no evidence.
+	// The test asserts violations should be empty → fails because len(violations) > 0.
+	if len(violations) != 0 {
+		t.Logf("B2 RED: T6 blocks ambiguous verdict with no evidence (currently firing)")
+		t.Logf("  violations: %v", violations)
+	}
+
+	// After Wave 1 adds the "ambiguous" exemption to T6, this assertion will pass.
+	if len(violations) != 0 {
+		t.Errorf("T6 should permit ambiguous verdict with no evidence, got violations: %v", violations)
+	}
+}
+
+// --- E1: code_ref Joint Invariant Tests (compile-error RED until Wave 1) ---
+
+// TestT_CodeRefMismatch_Blocked verifies that a new T-CodeRef joint invariant
+// detects when TaintInput.CodeRef and TaintVerdict.CodeRef differ.
+// This test is RED (compile-error) until Wave 1 adds CodeRef field to schema.
+func TestT_CodeRefMismatch_Blocked(t *testing.T) {
+	// After Wave 1: locate the T-CodeRef joint invariant
+	// For now, this test is a placeholder that will compile-error on CodeRef reference.
+	// The test demonstrates the intended behavior:
+	// - Input has CodeRef: "abc123def456"
+	// - Verdict has CodeRef: "999wronghash"
+	// - Joint invariant should fire → violations non-empty
+
+	// Input with non-empty code_ref
+	in := &schema.TaintInput{
+		Source:        schema.TaintEndpoint{File: "main.go", Line: 10, Expr: "userInput", Kind: "param"},
+		Sink:          schema.TaintEndpoint{File: "db.go", Line: 50, Expr: "query", Kind: "sink"},
+		MaxDepth:      10,
+		SemgrepTier:   "pro",
+		// CodeRef: "abc123def456", // WILL BE ADDED IN WAVE 1
+	}
+
+	// Verdict with mismatched code_ref
+	v := &schema.TaintVerdict{
+		Verdict:    "exploitable",
+		Confidence: "high",
+		Semgrep: schema.SemgrepEvidence{
+			Ran:     true,
+			Finding: true,
+			Tier:    "pro",
+			RuleID:  "go/sql-injection",
+		},
+		Gopls: schema.GoplsEvidence{
+			ReferencesCalls: 5,
+		},
+		// CodeRef: "999wronghash", // WILL BE ADDED IN WAVE 1; mismatch from input
+	}
+
+	// After Wave 1 adds the field and joint invariant:
+	// check := locateTaintJointCheck(t, "T-CodeRef")
+	// violations := check(in, v)
+	// if len(violations) == 0 {
+	//    t.Errorf("T-CodeRef joint invariant should fire on code_ref mismatch")
+	// }
+
+	// Test empty input CodeRef: invariant should skip (non-git repo compat)
+	inNoCodeRef := &schema.TaintInput{
+		Source:        schema.TaintEndpoint{File: "main.go", Line: 10, Expr: "userInput", Kind: "param"},
+		Sink:          schema.TaintEndpoint{File: "db.go", Line: 50, Expr: "query", Kind: "sink"},
+		MaxDepth:      10,
+		SemgrepTier:   "pro",
+		// CodeRef: "", // empty input code_ref
+	}
+
+	vWithCodeRef := &schema.TaintVerdict{
+		Verdict:    "exploitable",
+		Confidence: "high",
+		Semgrep: schema.SemgrepEvidence{
+			Ran:     true,
+			Finding: true,
+			Tier:    "pro",
+			RuleID:  "go/sql-injection",
+		},
+		Gopls: schema.GoplsEvidence{
+			ReferencesCalls: 5,
+		},
+		// CodeRef: "somehash", // even if verdict has code_ref, empty input skips check
+	}
+
+	// After Wave 1:
+	// violations = check(inNoCodeRef, vWithCodeRef)
+	// if len(violations) != 0 {
+	//    t.Errorf("T-CodeRef joint invariant should skip when input code_ref is empty")
+	// }
+
+	// For now, this test documents the intended behavior and will be GREEN after Wave 1.
+	t.Skip("E1 compile-error RED: CodeRef field not yet added to schema (Wave 1)")
+}
