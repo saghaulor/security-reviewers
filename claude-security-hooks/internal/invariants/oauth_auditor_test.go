@@ -653,3 +653,51 @@ func TestOA8_SessionIDMatchesInput(t *testing.T) {
 		})
 	}
 }
+
+// --- E1: code_ref Joint Invariant Tests (compile-error RED until Wave 1) ---
+
+// TestOA_CodeRefMismatch_Blocked verifies that a new OA-CodeRef joint invariant
+// detects when OAuthInput.CodeRef and OAuthVerdict.CodeRef differ.
+// This test is RED (compile-error) until Wave 1 adds CodeRef field to schema.
+func TestOA_CodeRefMismatch_Blocked(t *testing.T) {
+	// After Wave 1: locate the OA-CodeRef joint invariant
+	// For now, this test documents the intended behavior:
+	// - Input has CodeRef: "abc123"
+	// - Verdict has CodeRef: "wronghash"
+	// - Joint invariant should fire → violations non-empty
+
+	// Input with non-empty code_ref
+	in := &schema.OAuthInput{
+		TargetProfile: "oauth_2_0",
+		OAuthLocations: schema.OAuthLocations{
+			AuthorizationEndpoint: []string{"https://provider.example.com/oauth/authorize"},
+			TokenEndpoint:         []string{"https://provider.example.com/oauth/token"},
+		},
+		FeaturesInUse: []string{"authorization_code_flow", "refresh_token"},
+		// CodeRef: "abc123", // WILL BE ADDED IN WAVE 1
+	}
+
+	// Verdict with mismatched code_ref
+	v := &schema.OAuthVerdict{
+		Profile: "oauth_2_0",
+		Checklist: []schema.ChecklistEntry{
+			{
+				CheckID:  "AUTH-01",
+				Spec:     "PKCE required for public clients",
+				Status:   "pass",
+				Severity: "high",
+			},
+		},
+		// CodeRef: "wronghash", // WILL BE ADDED IN WAVE 1; mismatch from input
+	}
+
+	// After Wave 1 adds the field and joint invariant:
+	// check := locateOAuthJointInvariant(t, "OA-CodeRef")
+	// violations := check(in, v)
+	// if len(violations) == 0 {
+	//    t.Errorf("OA-CodeRef joint invariant should fire on code_ref mismatch")
+	// }
+
+	// For now, this test documents the intended behavior and will be GREEN after Wave 1.
+	t.Skip("E1 compile-error RED: CodeRef field not yet added to schema (Wave 1)")
+}
