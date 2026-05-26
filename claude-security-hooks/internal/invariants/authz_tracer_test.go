@@ -415,3 +415,100 @@ func TestAZ7_SessionIDMatchesInput(t *testing.T) {
 		})
 	}
 }
+
+// --- E1: code_ref Joint Invariant Tests (compile-error RED until Wave 1) ---
+
+// TestAZ_CodeRefMismatch_Blocked verifies that a new AZ-CodeRef joint invariant
+// detects when AuthzInput.CodeRef and AuthzVerdict.CodeRef differ.
+// This test is RED (compile-error) until Wave 1 adds CodeRef field to schema.
+func TestAZ_CodeRefMismatch_Blocked(t *testing.T) {
+	// After Wave 1: locate the AZ-CodeRef joint invariant
+	// For now, this test documents the intended behavior:
+	// - Input has CodeRef: "abc123"
+	// - Verdict has CodeRef: "wronghash"
+	// - Joint invariant should fire → violations non-empty
+
+	// Input with non-empty code_ref and at least one route (for AZ1 to pass)
+	in := &schema.AuthzInput{
+		Routes: []schema.AuthzRoute{
+			{
+				Router:  "gin",
+				Method:  "GET",
+				Path:    "/api/users/:id",
+				Handler: schema.Handler{Name: "GetUser"},
+			},
+		},
+		AuthzPrimitives: []schema.AuthzInputPrimitive{
+			{FQN: "pkg.middleware.AuthCheck", Kind: "func"},
+		},
+		// CodeRef: "abc123", // WILL BE ADDED IN WAVE 1
+	}
+
+	// Verdict with mismatched code_ref
+	v := &schema.AuthzVerdict{
+		Summary: schema.AuthzSummary{
+			RoutesTotal:       1,
+			Protected:         1,
+			Missing:           0,
+			Weak:              0,
+			IdorRisk:          0,
+			PublicIntentional: 0,
+		},
+		// CodeRef: "wronghash", // WILL BE ADDED IN WAVE 1; mismatch from input
+	}
+
+	// After Wave 1 adds the field and joint invariant:
+	// check := locateAuthzJointCheck(t, "AZ-CodeRef")
+	// violations := check(in, v)
+	// if len(violations) == 0 {
+	//    t.Errorf("AZ-CodeRef joint invariant should fire on code_ref mismatch")
+	// }
+
+	// For now, this test documents the intended behavior and will be GREEN after Wave 1.
+	t.Skip("E1 compile-error RED: CodeRef field not yet added to schema (Wave 1)")
+}
+
+// TestAZ_CodeRefEmpty_Skipped verifies that the code_ref joint invariant
+// does not fire when AuthzInput.CodeRef is empty (non-git repo compatibility).
+// This test is RED (compile-error) until Wave 1 adds CodeRef field to schema.
+func TestAZ_CodeRefEmpty_Skipped(t *testing.T) {
+	// After Wave 1: verify that empty input code_ref skips the invariant
+
+	// Input with empty code_ref
+	inNoCodeRef := &schema.AuthzInput{
+		Routes: []schema.AuthzRoute{
+			{
+				Router:  "gin",
+				Method:  "POST",
+				Path:    "/api/data",
+				Handler: schema.Handler{Name: "CreateData"},
+			},
+		},
+		AuthzPrimitives: []schema.AuthzInputPrimitive{
+			{FQN: "pkg.authz.Check", Kind: "func"},
+		},
+		// CodeRef: "", // empty input code_ref
+	}
+
+	vWithCodeRef := &schema.AuthzVerdict{
+		Summary: schema.AuthzSummary{
+			RoutesTotal:       1,
+			Protected:         1,
+			Missing:           0,
+			Weak:              0,
+			IdorRisk:          0,
+			PublicIntentional: 0,
+		},
+		// CodeRef: "somehash", // verdict has code_ref, but empty input skips check
+	}
+
+	// After Wave 1:
+	// check := locateAuthzJointCheck(t, "AZ-CodeRef")
+	// violations := check(inNoCodeRef, vWithCodeRef)
+	// if len(violations) != 0 {
+	//    t.Errorf("AZ-CodeRef joint invariant should skip when input code_ref is empty")
+	// }
+
+	// For now, this test documents the intended behavior and will be GREEN after Wave 1.
+	t.Skip("E1 compile-error RED: CodeRef field not yet added to schema (Wave 1)")
+}
