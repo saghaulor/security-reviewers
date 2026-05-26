@@ -9,9 +9,12 @@ type EffortLevel struct {
 
 // TaskToolInput — tool_input shape when tool_name == "Task".
 type TaskToolInput struct {
-	SubagentType string `json:"subagent_type"`
-	Prompt       string `json:"prompt"`
-	Description  string `json:"description,omitempty"`
+	SubagentType    string `json:"subagent_type"`
+	Prompt          string `json:"prompt"`
+	Description     string `json:"description,omitempty"`
+	RunInBackground bool   `json:"run_in_background,omitempty"`
+	Model           string `json:"model,omitempty"`
+	Isolation       string `json:"isolation,omitempty"`
 }
 
 // PreToolUseEvent — Claude Code hook input for PreToolUse on Task/Agent.
