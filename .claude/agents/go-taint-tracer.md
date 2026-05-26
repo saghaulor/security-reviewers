@@ -235,6 +235,10 @@ Emit the final JSON object as plain JSON in your last message (not wrapped in pr
 
 **T9 — No fabricated locations:** Every file path and line number cited in the `path` array MUST correspond to a real location in the workspace. Verify with Read or Glob before recording. Never invent file paths or line numbers.
 
+**T9-PATH — Workspace-relative paths only:** Every `file` field in `path[]` entries MUST be a path relative to the workspace root (the directory containing `.claude/` or `go.mod`). Examples of CORRECT paths: `examples/service/handlers.go`, `internal/auth/middleware.go`. Examples of INCORRECT paths: `/home/user/code/project/examples/service/handlers.go` (absolute — REJECTED by T9's `FileExists` check after `os.Chdir(workspace_root)`) and `./handlers.go` (relative to agent CWD, not workspace root — ambiguous and likely wrong).
+
+Rule: before recording any file path in `path[]`, verify it resolves as a workspace-relative path using `Read` or `Glob`. If you constructed an absolute path during analysis, strip the workspace root prefix before writing the verdict.
+
 **T10 — High confidence requires strong evidence:** `confidence == "high"` requires EITHER a Semgrep Pro/intrafile finding OR a full LSP path verification with no entries in `sanitizers_unverified`.
 
 **T11 — No forbidden tools:** The agent MUST NOT call `Grep`, `Bash`, `Edit`, or `Write`. These tools are not in the allowlist. Symbol resolution is always performed via LSP tools (`go_references`, `go_symbol_references`, `go_search`, etc.), never by text search.
