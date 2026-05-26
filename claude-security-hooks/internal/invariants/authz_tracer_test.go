@@ -429,13 +429,13 @@ func TestAZ_CodeRefMismatch_Blocked(t *testing.T) {
 	// - Joint invariant should fire → violations non-empty
 
 	// Input with non-empty code_ref and at least one route (for AZ1 to pass)
-	in := &schema.AuthzInput{
+	_ = &schema.AuthzInput{
 		Routes: []schema.AuthzRoute{
 			{
 				Router:  "gin",
 				Method:  "GET",
 				Path:    "/api/users/:id",
-				Handler: schema.Handler{Name: "GetUser"},
+				Handler: schema.Handler{FQN: "pkg.handlers.GetUser", File: "handlers.go", Line: 10},
 			},
 		},
 		AuthzPrimitives: []schema.AuthzInputPrimitive{
@@ -445,7 +445,7 @@ func TestAZ_CodeRefMismatch_Blocked(t *testing.T) {
 	}
 
 	// Verdict with mismatched code_ref
-	v := &schema.AuthzVerdict{
+	_ = &schema.AuthzVerdict{
 		Summary: schema.AuthzSummary{
 			RoutesTotal:       1,
 			Protected:         1,
@@ -475,13 +475,13 @@ func TestAZ_CodeRefEmpty_Skipped(t *testing.T) {
 	// After Wave 1: verify that empty input code_ref skips the invariant
 
 	// Input with empty code_ref
-	inNoCodeRef := &schema.AuthzInput{
+	_ = &schema.AuthzInput{
 		Routes: []schema.AuthzRoute{
 			{
 				Router:  "gin",
 				Method:  "POST",
 				Path:    "/api/data",
-				Handler: schema.Handler{Name: "CreateData"},
+				Handler: schema.Handler{FQN: "pkg.handlers.CreateData", File: "handlers.go", Line: 25},
 			},
 		},
 		AuthzPrimitives: []schema.AuthzInputPrimitive{
@@ -490,7 +490,7 @@ func TestAZ_CodeRefEmpty_Skipped(t *testing.T) {
 		// CodeRef: "", // empty input code_ref
 	}
 
-	vWithCodeRef := &schema.AuthzVerdict{
+	_ = &schema.AuthzVerdict{
 		Summary: schema.AuthzSummary{
 			RoutesTotal:       1,
 			Protected:         1,

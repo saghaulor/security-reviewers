@@ -1,10 +1,7 @@
 package schema_test
 
 import (
-	"encoding/json"
 	"testing"
-
-	"github.com/saghaulor/claude-security-hooks/internal/schema"
 )
 
 // --- E1: CodeRef Round-Trip Tests (compile-error RED until Wave 1) ---

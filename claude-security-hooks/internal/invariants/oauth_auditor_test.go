@@ -667,18 +667,18 @@ func TestOA_CodeRefMismatch_Blocked(t *testing.T) {
 	// - Joint invariant should fire → violations non-empty
 
 	// Input with non-empty code_ref
-	in := &schema.OAuthInput{
+	_ = &schema.OAuthInput{
 		TargetProfile: "oauth_2_0",
 		OAuthLocations: schema.OAuthLocations{
-			AuthorizationEndpoint: []string{"https://provider.example.com/oauth/authorize"},
-			TokenEndpoint:         []string{"https://provider.example.com/oauth/token"},
+			AuthorizeEndpoint: &schema.EndpointLoc{FQN: "pkg.oauth.Authorize", File: "oauth.go", Line: 10},
+			TokenEndpoint:     &schema.EndpointLoc{FQN: "pkg.oauth.Token", File: "oauth.go", Line: 25},
 		},
 		FeaturesInUse: []string{"authorization_code_flow", "refresh_token"},
 		// CodeRef: "abc123", // WILL BE ADDED IN WAVE 1
 	}
 
 	// Verdict with mismatched code_ref
-	v := &schema.OAuthVerdict{
+	_ = &schema.OAuthVerdict{
 		Profile: "oauth_2_0",
 		Checklist: []schema.ChecklistEntry{
 			{

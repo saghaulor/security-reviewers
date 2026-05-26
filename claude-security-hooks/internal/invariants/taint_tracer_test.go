@@ -661,7 +661,7 @@ func TestT_CodeRefMismatch_Blocked(t *testing.T) {
 	// - Joint invariant should fire → violations non-empty
 
 	// Input with non-empty code_ref
-	in := &schema.TaintInput{
+	_ = &schema.TaintInput{
 		Source:        schema.TaintEndpoint{File: "main.go", Line: 10, Expr: "userInput", Kind: "param"},
 		Sink:          schema.TaintEndpoint{File: "db.go", Line: 50, Expr: "query", Kind: "sink"},
 		MaxDepth:      10,
@@ -670,7 +670,7 @@ func TestT_CodeRefMismatch_Blocked(t *testing.T) {
 	}
 
 	// Verdict with mismatched code_ref
-	v := &schema.TaintVerdict{
+	_ = &schema.TaintVerdict{
 		Verdict:    "exploitable",
 		Confidence: "high",
 		Semgrep: schema.SemgrepEvidence{
@@ -693,7 +693,7 @@ func TestT_CodeRefMismatch_Blocked(t *testing.T) {
 	// }
 
 	// Test empty input CodeRef: invariant should skip (non-git repo compat)
-	inNoCodeRef := &schema.TaintInput{
+	_ = &schema.TaintInput{
 		Source:        schema.TaintEndpoint{File: "main.go", Line: 10, Expr: "userInput", Kind: "param"},
 		Sink:          schema.TaintEndpoint{File: "db.go", Line: 50, Expr: "query", Kind: "sink"},
 		MaxDepth:      10,
@@ -701,7 +701,7 @@ func TestT_CodeRefMismatch_Blocked(t *testing.T) {
 		// CodeRef: "", // empty input code_ref
 	}
 
-	vWithCodeRef := &schema.TaintVerdict{
+	_ = &schema.TaintVerdict{
 		Verdict:    "exploitable",
 		Confidence: "high",
 		Semgrep: schema.SemgrepEvidence{

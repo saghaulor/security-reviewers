@@ -376,7 +376,7 @@ func TestIC_CodeRefMismatch_Blocked(t *testing.T) {
 	// - Joint invariant should fire → violations non-empty
 
 	// Input with non-empty code_ref
-	in := &schema.InvariantCheckerInput{
+	_ = &schema.InvariantCheckerInput{
 		FlowName: "payment_processing",
 		Invariants: []schema.InputInvariant{
 			{
@@ -389,7 +389,7 @@ func TestIC_CodeRefMismatch_Blocked(t *testing.T) {
 	}
 
 	// Verdict with mismatched code_ref
-	v := &schema.InvariantCheckerVerdict{
+	_ = &schema.InvariantCheckerVerdict{
 		FlowName: "payment_processing",
 		Results: []schema.InvariantResult{
 			{
