@@ -362,3 +362,59 @@ func TestIC5_SessionIDMatchesInput(t *testing.T) {
 		})
 	}
 }
+
+// --- E1: code_ref Joint Invariant Tests (compile-error RED until Wave 1) ---
+
+// TestIC_CodeRefMismatch_Blocked verifies that a new IC-CodeRef joint invariant
+// detects when InvariantCheckerInput.CodeRef and InvariantCheckerVerdict.CodeRef differ.
+// This test is RED (compile-error) until Wave 1 adds CodeRef field to schema.
+func TestIC_CodeRefMismatch_Blocked(t *testing.T) {
+	// After Wave 1: locate the IC-CodeRef joint invariant
+	// For now, this test documents the intended behavior:
+	// - Input has CodeRef: "abc123"
+	// - Verdict has CodeRef: "wronghash"
+	// - Joint invariant should fire → violations non-empty
+
+	// Input with non-empty code_ref
+	in := &schema.InvariantCheckerInput{
+		FlowName: "payment_processing",
+		Invariants: []schema.InputInvariant{
+			{
+				ID:        "I1",
+				Statement: "Payment amount must be validated before processing",
+				AnchorSymbols: []string{"processPayment"},
+			},
+		},
+		// CodeRef: "abc123", // WILL BE ADDED IN WAVE 1
+	}
+
+	// Verdict with mismatched code_ref
+	v := &schema.InvariantCheckerVerdict{
+		FlowName: "payment_processing",
+		Results: []schema.InvariantResult{
+			{
+				InvariantID: "I1",
+				Status:      "satisfied",
+				Confidence:  "high",
+				Evidence: schema.InvariantEvidence{
+					Files:       []string{"payment.go"},
+					Explanation: "Amount validation found before sink",
+				},
+			},
+		},
+		// CodeRef: "wronghash", // WILL BE ADDED IN WAVE 1; mismatch from input
+	}
+
+	// After Wave 1 adds the field and joint invariant:
+	// check := locateICJointCheck("IC-CodeRef")
+	// if check == nil {
+	//    t.Fatalf("IC-CodeRef joint invariant not found")
+	// }
+	// violations := check.Check(in, v)
+	// if len(violations) == 0 {
+	//    t.Errorf("IC-CodeRef joint invariant should fire on code_ref mismatch")
+	// }
+
+	// For now, this test documents the intended behavior and will be GREEN after Wave 1.
+	t.Skip("E1 compile-error RED: CodeRef field not yet added to schema (Wave 1)")
+}
