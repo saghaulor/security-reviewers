@@ -5,8 +5,11 @@
       "command": "/home/saghaulor/code/security_reviewer/scripts/graphify-mcp.sh"
     },
     "opengrep": {
-      "type": "sse",
-      "url": "http://localhost:8000/sse"
+      "type": "stdio",
+      "command": "/home/saghaulor/code/security_reviewer/.claude/hooks/bin/opengrep-mcp",
+      "env": {
+        "SAST_ENGINE": "opengrep"
+      }
     }
   }
 }
