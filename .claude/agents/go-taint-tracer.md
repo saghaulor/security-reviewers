@@ -29,7 +29,9 @@ You verify whether untrusted input from one source reaches one sink along an exp
   },
   "max_depth": 8,
   "semgrep_tier": "pro|intrafile|ce",
-  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command
+  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command,
+  "code_ref": "<git tree hash — passed from orchestration, echo in output>",
+  "code_ref_dirty": false
 }
 ```
 
@@ -40,6 +42,8 @@ You verify whether untrusted input from one source reaches one sink along an exp
 **Scope (in):** SQLi, command injection, SSRF, path traversal, unsafe deserialization, template injection, XXE. Also OAuth taint pairs dispatched by `go-oauth-auditor` after it locates the OAuth surface.
 
 **Scope (out):** Authorization checks (use `go-authz-tracer`), business invariants (use `invariant-checker`), OAuth conformance checks (use `go-oauth-auditor`).
+
+**code_ref and code_ref_dirty:** Copy verbatim from input into the verdict output. This enables the T-CodeRef joint invariant to verify the verdict was produced against the expected code version.
 
 **Minimal valid example:**
 
@@ -203,7 +207,9 @@ These pairs are dispatched by `go-oauth-auditor` after it locates the OAuth surf
   },
   "sanitizers_unverified": [],
   "notes": "...",
-  "review_session_id": <uuid> — Echo of input review_session_id if provided
+  "review_session_id": <uuid> — Echo of input review_session_id if provided,
+  "code_ref": "<echo of input code_ref>",
+  "code_ref_dirty": false
 }
 ```
 
@@ -212,6 +218,8 @@ These pairs are dispatched by `go-oauth-auditor` after it locates the OAuth surf
 **Confidence enum:** `high`, `medium`, `low`.
 
 **Step enum (path entries):** `source`, `assign`, `call`, `return`, `sanitize`, `sink`, `iface_dispatch`, `chan_send`, `chan_recv`.
+
+**Code ref fields:** `code_ref` echoes the input code_ref verbatim. `code_ref_dirty` echoes the input code_ref_dirty value. If input code_ref is empty, omit both fields from output (omitempty).
 
 Emit the final JSON object as plain JSON in your last message (not wrapped in prose or markdown code block markers).
 
