@@ -26,9 +26,13 @@ You verify that every route in a Go application passes through recognized author
   ],
   "authz_primitives": [{"fqn": "...", "kind": "middleware|guard|decorator"}],
   "sensitive_operations": [{"file": "...", "line": 0, "kind": "db_write|external_api|privileged_op"}],
-  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command
+  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command,
+  "code_ref": "<git tree hash — passed from orchestration, echo in output>",
+  "code_ref_dirty": false
 }
 ```
+
+**code_ref and code_ref_dirty:** Copy verbatim from input into the verdict output. This enables the AZ-CodeRef joint invariant to verify the verdict was produced against the expected code version.
 
 **Router kinds:** `chi`, `gin`, `mux`, `net_http`, `echo`, `fiber`.
 
@@ -131,7 +135,9 @@ For each authz primitive used in the routes:
     }
   ],
   "weak_primitives": [{"fqn": "...", "reason": "..."}],
-  "review_session_id": <uuid> — Echo of input review_session_id if provided
+  "review_session_id": <uuid> — Echo of input review_session_id if provided,
+  "code_ref": "<echo of input code_ref>",
+  "code_ref_dirty": false
 }
 ```
 
@@ -150,6 +156,8 @@ For each authz primitive used in the routes:
 - `confidence`: Confidence in the finding (high/medium/low).
 
 **Weak primitives:** List of authz primitives that do not block or have bypass paths, with explanation.
+
+**Code ref fields:** `code_ref` echoes the input code_ref verbatim. `code_ref_dirty` echoes the input code_ref_dirty value. If input code_ref is empty, omit both fields from output (omitempty).
 
 Emit the final JSON object as plain JSON in your last message (not wrapped in prose).
 
