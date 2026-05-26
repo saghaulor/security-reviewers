@@ -24,9 +24,13 @@ You conformance-check a Go OAuth/OIDC implementation against current RFCs and dr
   },
   "target_profile": "oauth_2_1|oauth_2_0|oauth_2_0_with_9700_bcp",
   "features_in_use": ["pkce", "par", "dpop", "ciba", "token_exchange", "dynamic_client_registration", "introspection", "revocation"],
-  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command
+  "review_session_id": "<uuid>" (optional, string) — Session identifier passed from orchestration command,
+  "code_ref": "<git tree hash — passed from orchestration, echo in output>",
+  "code_ref_dirty": false
 }
 ```
+
+**code_ref and code_ref_dirty:** Copy verbatim from input into the checklist output. This enables the OA-CodeRef joint invariant to verify the verdict was produced against the expected code version.
 
 **Target profiles:**
 - `oauth_2_1`: OAuth 2.1 (latest standard, removes insecure flows)
@@ -159,13 +163,17 @@ OIDC-at-hash-validation                | OIDC Core §3.2.2.9 / §3.3.2.9        
       "rationale": "scope tampering — verify server re-reads from authoritative state"
     }
   ],
-  "review_session_id": <uuid> — Echo of input review_session_id if provided
+  "review_session_id": <uuid> — Echo of input review_session_id if provided,
+  "code_ref": "<echo of input code_ref>",
+  "code_ref_dirty": false
 }
 ```
 
 **Status enum:** `pass`, `fail`, `not_applicable`, `unverified`.
 
 **Severity enum:** `critical`, `high`, `medium`, `low`, `info`.
+
+**Code ref fields:** `code_ref` echoes the input code_ref verbatim. `code_ref_dirty` echoes the input code_ref_dirty value. If input code_ref is empty, omit both fields from output (omitempty).
 
 Emit the final JSON object as plain JSON in your last message (not wrapped in prose).
 
