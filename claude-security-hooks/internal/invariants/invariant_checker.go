@@ -29,6 +29,7 @@ var InvariantCheckerJointInvariants = []InvariantCheckerJointInvariant{
 	{ID: "IC2", Description: "exactly one result per input invariant; IDs match input set", Severity: SeverityHigh, Check: checkIC2Joint},
 	{ID: "IC4", Description: "results introduce no new invariant IDs (D-16: no discovery)", Severity: SeverityHigh, Check: checkIC4Joint},
 	{ID: "IC5", Description: "if input has review_session_id, verdict review_session_id must match exactly", Severity: SeverityHigh, Check: checkIC5Joint},
+	{ID: "IC-CodeRef", Description: "if input has non-empty code_ref, verdict code_ref must match exactly", Severity: SeverityHigh, Check: checkICCodeRefJoint},
 }
 
 // --- IC1 ---
@@ -112,6 +113,23 @@ func checkIC5Joint(in *schema.InvariantCheckerInput, v *schema.InvariantCheckerV
 			Path:     "review_session_id",
 			Expected: in.ReviewSessionID,
 			Actual:   v.ReviewSessionID,
+		}}
+	}
+	return nil
+}
+
+// --- IC-CodeRef (JOINT) ---
+func checkICCodeRefJoint(in *schema.InvariantCheckerInput, v *schema.InvariantCheckerVerdict) []Violation {
+	// If input does not specify a code_ref, no check is performed (field is optional).
+	if in.CodeRef == "" {
+		return nil
+	}
+	// If input specifies a code_ref, verdict must echo it exactly.
+	if v.CodeRef != in.CodeRef {
+		return []Violation{{
+			Path:     "code_ref",
+			Expected: in.CodeRef,
+			Actual:   v.CodeRef,
 		}}
 	}
 	return nil
