@@ -1,7 +1,7 @@
 ---
 project_name: security-reviewer
-milestone: Phase 9 — opengrep-mcp SSE server + infrastructure hardening
-milestone_version: 9
+milestone: Phase 10 — Hook compatibility + code-ref schema
+milestone_version: 10
 completed_phases:
   - phase: 1
     name: Repo scaffold
@@ -30,42 +30,39 @@ completed_phases:
   - phase: 9
     name: opengrep-mcp server + infrastructure hardening
     completed_at: 2026-05-26
-current_phase: null
+current_phase: 10
 next_phase: null
-total_phases: 9
+total_phases: 10
 paused_at: null
-status: complete
+status: ready_to_execute
 ---
 
 # Project State: security-reviewer
 
-**All 9 phases complete.** Phase 9 (opengrep-mcp stdio integration) completed 2026-05-26. SC5 (Claude Code tool discovery) pending one manual verify in a fresh session.
+**Phase 10 in progress — Hook compatibility + code-ref schema.** Hooks binary rebuilt 2026-05-26 with `prompt` field accepted. Plan 10-01 complete: 20 RED tests written. Awaiting Wave 1 (Plan 10-02) to implement fixes.
 
-## Current Phase: 9 — opengrep-mcp SSE server + infrastructure hardening
+## Current Phase: 10 — Hook compatibility + code-ref schema
 
-**Started:** 2026-05-26
+**Phase status:** Wave 0 (TDD RED) complete; Wave 1 (implementation) pending
 
-**Infrastructure work already committed (done during/after Phase 8):**
-- Session ID threading across all tracers + orchestration command
-- `claude-security-hooks uuid` subcommand (stdlib crypto/rand, replaces `uuidgen`)
-- H5 predicate fix (two-invocation `go list` approach correctly separating test vs non-test deps)
-- Orchestration command hardening: stale file deletion before agents run, explicit Task JSON, mandatory SESSION_ID threading to all four tracers
-- govulncheck via Docker (no local install required; non-zero exit = vulns found, not error)
-- `.mcp.json` + `scripts/graphify-mcp.sh`: graphify MCP via stdio wrapper, opengrep MCP via SSE at localhost:8000
+**Plan 01 completed (2026-05-26):** TDD RED phase — 20 failing tests written
+- B1 tests (4): Agent tool extra fields rejection tests (events_test.go)
+- B2 tests (1): T6 ambiguous verdict blocking test (taint_tracer_test.go)
+- E1 tests (15): code_ref schema mismatch tests (5 joint invariant + 10 round-trip)
+  - Joint invariants: T-CodeRef, AZ-CodeRef, OA-CodeRef, IC-CodeRef
+  - Round-trip tests: all 10 structs that gain CodeRef/CodeRefDirty fields
+- Commits: 236e1d9, 73d2d53, 409e243, 0eab613, 4f2ffdd, 347404b, 9b26c3e (SUMMARY)
 
-**Plan 01 completed (2026-05-26):**
-- Top-level Makefile created with `verify-opengrep-mcp` TDD RED gate and `build-opengrep-mcp` stub
-- `security-review.md` Step 3 Docker bootstrap removed; steps renumbered 0-8 sequentially
-- Commits: 8700257 (Makefile RED gate), e44460c (security-review.md cleanup)
+**Plan 02 pending (Wave 1):** GREEN phase — implement B1, B2, E1 fixes
+- Add run_in_background, model, isolation fields to TaskToolInput
+- Modify T6 check to exempt verdict="ambiguous"
+- Add CodeRef and CodeRefDirty fields to all 10 schema structs
+- Add joint invariant checks for code_ref mismatch detection
 
-**Plan 02 completed (2026-05-26):**
-- `build-opengrep-mcp` Makefile target implemented (TDD GREEN phase): delegates to standalone repo, copies static binary to `.claude/hooks/bin/opengrep-mcp`
-- `.mcp.json` opengrep entry switched from SSE to stdio; `SAST_ENGINE=opengrep` env set; `SEMGREP_APP_TOKEN` excluded
-- `make verify-opengrep-mcp` passes (GREEN state confirmed)
-- Commits: ade319e (Makefile GREEN + verify fix), 249c118 (.mcp.json stdio)
-
-**Still to implement:**
-- None — Phase 9 deliverables complete
+**Plan 03 pending (Wave 1):** Configuration changes — B3, B4, additional text/config updates
+- B3: T9 absolute path validation
+- B4: Binary freshness validation
+- Additional configuration and documentation updates
 
 ## Decisions
 
@@ -80,3 +77,8 @@ status: complete
 - Phase 9 added: opengrep-mcp SSE server + infrastructure hardening (2026-05-26)
 - Phase 9 Plan 01 complete: Makefile TDD RED gate + security-review.md cleanup (2026-05-26)
 - Phase 9 Plan 02 complete: build-opengrep-mcp GREEN phase + .mcp.json stdio wiring (2026-05-26)
+- Phase 10 Plan 01 complete: 20 RED tests for B1/B2/E1 blockers (2026-05-26)
+  - 4 B1 tests: Agent tool extra fields rejection
+  - 1 B2 test: T6 ambiguous verdict blocking
+  - 5 E1 joint invariant tests: code_ref mismatch detection
+  - 10 E1 schema round-trip tests: compile-error RED placeholders
