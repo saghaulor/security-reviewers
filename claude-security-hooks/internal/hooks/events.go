@@ -14,7 +14,8 @@ type TaskToolInput struct {
 	Description  string `json:"description,omitempty"`
 }
 
-// PreToolUseEvent — Claude Code hook input for PreToolUse on Task. RESEARCH.md RQ-1 verified.
+// PreToolUseEvent — Claude Code hook input for PreToolUse on Task/Agent.
+// Prompt: Claude Code Agent tool includes top-level "prompt" in hook events (H7 fix).
 type PreToolUseEvent struct {
 	SessionID      string        `json:"session_id"`
 	TranscriptPath string        `json:"transcript_path"`
@@ -23,6 +24,7 @@ type PreToolUseEvent struct {
 	ToolName       string        `json:"tool_name"`
 	ToolInput      TaskToolInput `json:"tool_input"`
 	ToolUseID      string        `json:"tool_use_id"`
+	Prompt         string        `json:"prompt,omitempty"`
 	PermissionMode string        `json:"permission_mode,omitempty"`
 	Effort         EffortLevel   `json:"effort,omitempty"`
 	Status         string        `json:"status,omitempty"`
@@ -37,6 +39,7 @@ type ToolResponse struct {
 }
 
 // PostToolUseEvent adds tool_response.
+// Prompt: Claude Code Agent tool includes top-level "prompt" in hook events (H7 fix).
 type PostToolUseEvent struct {
 	SessionID      string        `json:"session_id"`
 	TranscriptPath string        `json:"transcript_path"`
@@ -46,6 +49,7 @@ type PostToolUseEvent struct {
 	ToolInput      TaskToolInput `json:"tool_input"`
 	ToolUseID      string        `json:"tool_use_id"`
 	ToolResponse   ToolResponse  `json:"tool_response"`
+	Prompt         string        `json:"prompt,omitempty"`
 	PermissionMode string        `json:"permission_mode,omitempty"`
 	Effort         EffortLevel   `json:"effort,omitempty"`
 	Status         string        `json:"status,omitempty"`

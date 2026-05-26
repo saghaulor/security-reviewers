@@ -152,6 +152,57 @@ func TestPostToolUseEvent_ToolResponseWithStatus(t *testing.T) {
 	}
 }
 
+func TestPostToolUseEvent_AgentToolWithTopLevelPrompt(t *testing.T) {
+	// Claude Code Agent tool PostToolUse events include a top-level "prompt" field.
+	// DisallowUnknownFields must not reject it (H7 fix).
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Agent",
+		"tool_input": {"subagent_type": "gsd-executor", "prompt": "do the thing", "description": "Execute plan"},
+		"tool_use_id": "123",
+		"tool_response": {"content": "result", "status": "success"},
+		"prompt": "do the thing"
+	}`
+
+	var event hooks.PostToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		t.Fatalf("Decode failed with top-level prompt (Agent tool): %v", err)
+	}
+	if event.Prompt != "do the thing" {
+		t.Errorf("Prompt = %q, want 'do the thing'", event.Prompt)
+	}
+}
+
+func TestPreToolUseEvent_AgentToolWithTopLevelPrompt(t *testing.T) {
+	// Claude Code Agent tool PreToolUse events may include a top-level "prompt" field.
+	// DisallowUnknownFields must not reject it (H7 fix, symmetric with PostToolUse).
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Agent",
+		"tool_input": {"subagent_type": "gsd-executor", "prompt": "do the thing", "description": "Execute plan"},
+		"tool_use_id": "123",
+		"prompt": "do the thing"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		t.Fatalf("Decode failed with top-level prompt (Agent PreToolUse): %v", err)
+	}
+	if event.Prompt != "do the thing" {
+		t.Errorf("Prompt = %q, want 'do the thing'", event.Prompt)
+	}
+}
+
 func TestSubagentStartEvent_UsesAgentType(t *testing.T) {
 	payload := `{
 		"session_id": "test",
