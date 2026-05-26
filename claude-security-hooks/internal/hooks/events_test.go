@@ -245,3 +245,131 @@ func TestSubagentStartEvent_RejectsAgentName(t *testing.T) {
 		t.Errorf("Decode with agent_name returned nil error, want error for unknown field")
 	}
 }
+
+// --- B1: Agent Tool Extra Fields Tests ---
+
+// TestPreToolUseEvent_RunInBackgroundRejected verifies that the run_in_background field
+// is currently rejected by DisallowUnknownFields. After Wave 1, TaskToolInput will include
+// the field and this test should be updated to assert it equals true.
+func TestPreToolUseEvent_RunInBackgroundRejected(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "go-taint-tracer",
+			"prompt": "Review this code for taint flow issues",
+			"run_in_background": true
+		},
+		"tool_use_id": "tool-123",
+		"permission_mode": "manual"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err == nil {
+		t.Errorf("Decode with run_in_background returned nil error, want error for unknown field (B1 RED: field currently rejected)")
+	}
+	if err != nil && !strings.Contains(err.Error(), "run_in_background") {
+		t.Errorf("Decode error does not mention run_in_background: %v", err)
+	}
+}
+
+// TestPostToolUseEvent_RunInBackgroundRejected verifies that the run_in_background field
+// in PostToolUse tool_input is currently rejected. Same as PreToolUse but for the PostToolUse hook.
+func TestPostToolUseEvent_RunInBackgroundRejected(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "go-taint-tracer",
+			"prompt": "Review this code",
+			"run_in_background": true
+		},
+		"tool_use_id": "tool-123",
+		"tool_response": {
+			"content": "verdict output",
+			"status": "success"
+		}
+	}`
+
+	var event hooks.PostToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err == nil {
+		t.Errorf("Decode with run_in_background returned nil error, want error for unknown field (B1 RED: field currently rejected)")
+	}
+	if err != nil && !strings.Contains(err.Error(), "run_in_background") {
+		t.Errorf("Decode error does not mention run_in_background: %v", err)
+	}
+}
+
+// TestPreToolUseEvent_ModelFieldRejected verifies that the model field in tool_input
+// is currently rejected. After Wave 1, TaskToolInput will include the field.
+func TestPreToolUseEvent_ModelFieldRejected(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "synthesis",
+			"prompt": "Synthesize verdicts",
+			"model": "sonnet"
+		},
+		"tool_use_id": "tool-456"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err == nil {
+		t.Errorf("Decode with model field returned nil error, want error for unknown field (B1 RED: field currently rejected)")
+	}
+	if err != nil && !strings.Contains(err.Error(), "model") {
+		t.Errorf("Decode error does not mention model: %v", err)
+	}
+}
+
+// TestPreToolUseEvent_IsolationFieldRejected verifies that the isolation field in tool_input
+// is currently rejected. After Wave 1, TaskToolInput will include the field.
+func TestPreToolUseEvent_IsolationFieldRejected(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "go-cartographer",
+			"prompt": "Discover Go code structure",
+			"isolation": "worktree"
+		},
+		"tool_use_id": "tool-789"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err == nil {
+		t.Errorf("Decode with isolation field returned nil error, want error for unknown field (B1 RED: field currently rejected)")
+	}
+	if err != nil && !strings.Contains(err.Error(), "isolation") {
+		t.Errorf("Decode error does not mention isolation: %v", err)
+	}
+}
