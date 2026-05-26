@@ -41,6 +41,7 @@ var TaintTracerJointInvariants = []TaintInputJointInvariant{
 	{ID: "T7", Description: "semgrep.tier in verdict equals semgrep_tier in input", Severity: SeverityHigh, Check: checkT7Joint},
 	{ID: "T8", Description: "interface-typed source requires implementation_calls>0 OR notes explaining skip", Severity: SeverityHigh, Check: checkT8Joint},
 	{ID: "T12", Description: "if input has review_session_id, verdict review_session_id must match exactly", Severity: SeverityHigh, Check: checkT12Joint},
+	{ID: "T-CodeRef", Description: "if input has non-empty code_ref, verdict code_ref must match exactly", Severity: SeverityHigh, Check: checkTCodeRefJoint},
 }
 
 // --- T1 ---
@@ -105,7 +106,7 @@ func checkT5(v *schema.TaintVerdict) []Violation {
 
 // --- T6 ---
 func checkT6(v *schema.TaintVerdict) []Violation {
-	if v.Verdict == "input_mismatch" {
+	if v.Verdict == "input_mismatch" || v.Verdict == "ambiguous" {
 		return nil
 	}
 	if v.Semgrep.Ran || v.Gopls.ReferencesCalls > 0 {
@@ -113,7 +114,7 @@ func checkT6(v *schema.TaintVerdict) []Violation {
 	}
 	return []Violation{{
 		Path:     "semgrep+gopls",
-		Expected: "semgrep.ran=true OR gopls.references_calls>0 (unless input_mismatch)",
+		Expected: "semgrep.ran=true OR gopls.references_calls>0 (unless input_mismatch or ambiguous)",
 		Actual:   "neither",
 	}}
 }
@@ -218,6 +219,23 @@ func checkT12Joint(in *schema.TaintInput, v *schema.TaintVerdict) []Violation {
 			Path:     "review_session_id",
 			Expected: in.ReviewSessionID,
 			Actual:   v.ReviewSessionID,
+		}}
+	}
+	return nil
+}
+
+// --- T-CodeRef (JOINT) ---
+func checkTCodeRefJoint(in *schema.TaintInput, v *schema.TaintVerdict) []Violation {
+	// If input does not specify a code_ref, no check is performed (field is optional).
+	if in.CodeRef == "" {
+		return nil
+	}
+	// If input specifies a code_ref, verdict must echo it exactly.
+	if v.CodeRef != in.CodeRef {
+		return []Violation{{
+			Path:     "code_ref",
+			Expected: in.CodeRef,
+			Actual:   v.CodeRef,
 		}}
 	}
 	return nil
