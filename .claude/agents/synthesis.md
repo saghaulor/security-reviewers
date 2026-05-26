@@ -46,6 +46,12 @@ Use `Glob` to list all JSON files in the input directory. For each file:
 2. Check each file's `review_session_id` field. Skip any file where `review_session_id` is present but does not match the `review_id` passed in the Task input. Log skipped files as informational warnings in `deduplication_notes`.
 3. Extract findings and build an internal list: `[(severity, class, title, files, lines, path, source_agents, confidence, spec_references), ...]`.
 
+Extract from go-index.json:
+- `code_ref` — git tree hash written by cartographer (default "" if absent)
+- `code_ref_dirty` — dirty flag (default false if absent)
+
+These will be written into review-report.json in Step 5. Synthesis does NOT recompute code_ref — it propagates the cartographer's value. The cartographer is the single source of truth for code identity in a review run.
+
 **Step 2: Deduplicate findings**
 
 Findings that share the same `(file, line, class)` are merged:
@@ -105,6 +111,8 @@ Count findings by:
   "review_id": "uuid",
   "timestamp": "2026-05-20T15:42:30Z",
   "scma_version": "review-report/v1",
+  "code_ref": "<propagated from go-index.json, omit if empty>",
+  "code_ref_dirty": false,
   "summary": {
     "total_findings": 0,
     "by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0},
@@ -138,6 +146,8 @@ Count findings by:
 - `review_id`: The UUID injected by the `/security-review` slash command. Copy verbatim, do NOT generate a new one.
 - `timestamp`: ISO 8601 timestamp of the report generation.
 - `scma_version`: MUST be the literal string `"review-report/v1"`. **CRITICAL NOTE:** This field is intentionally named `scma_version` (NOT `schema_version`) — the Phase 2 validator binary checks for the literal key `scma_version`. Using the corrected spelling `schema_version` would fail validation.
+- `code_ref`: Git tree hash propagated from go-index.json. Omit if empty (omitempty).
+- `code_ref_dirty`: Dirty flag propagated from go-index.json.
 - `summary`: Counts of findings by severity and class.
 - `findings`: Ranked list of findings after deduplication.
 - `deduplication_notes`: Human-readable notes on which findings were merged.
