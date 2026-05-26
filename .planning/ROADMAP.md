@@ -107,16 +107,35 @@ Plans:
   5. `CONTRIBUTING.md` describes how to add a new specialist agent (e.g., for a future stack), how to extend the source/sink catalog in §8.2, and the TDD-with-tests-before-implementation convention.
 **Plans**: TBD
 
+### Phase 9: opengrep-mcp server + infrastructure hardening
+**Goal**: Integrate the standalone `opengrep-mcp` binary into the security-review pipeline. The standalone binary already exists at `/home/saghaulor/code/opengrep-mcp` (Phase 5 complete, tested). Work in this repo is integration-only: top-level Makefile with build/verify targets, `.mcp.json` switched from SSE to stdio, and orchestration command Step 3 (Docker bootstrap) removed.
+**Depends on**: Phase 8 (automated E2E testing framework in place; MCP config skeleton committed)
+**Requirements**: REQ-mcp-O1, REQ-mcp-O2, REQ-mcp-O3, REQ-mcp-O4, REQ-mcp-O5, REQ-mcp-O6, REQ-mcp-O7, REQ-mcp-O8
+**Success Criteria** (what must be TRUE):
+  1. `make build-opengrep-mcp` from the security_reviewer root produces a static binary at `.claude/hooks/bin/opengrep-mcp` by delegating to the standalone repo's build system.
+  2. `make verify-opengrep-mcp` passes: binary exists, is executable, and is statically linked.
+  3. `.mcp.json` opengrep entry uses `type: "stdio"` pointing at `.claude/hooks/bin/opengrep-mcp` with `SAST_ENGINE=opengrep` env var; no SSE/localhost:8000 references remain.
+  4. `.claude/commands/security-review.md` Steps are numbered 0–8 with no gaps; no Docker health-check or container bootstrap logic remains in the file.
+  5. Claude Code can discover and spawn opengrep-mcp as a stdio subprocess — the three MCP tools (scan_with_rule, scan_directory, get_ast) are accessible to agents via `mcp__opengrep__*` prefix.
+**Plans**: 2 plans across 2 waves
+
+Plans:
+- [ ] 09-01-PLAN.md — Wave 1: TDD verify target (RED) + remove Step 3 from orchestration command
+- [ ] 09-02-PLAN.md — Wave 2: build-opengrep-mcp implementation (GREEN) + .mcp.json stdio wiring
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6. Phases 2/3/4 develop in parallel from Phase 1 (two Go modules + agent files are independent deliverables); the converge point is Phase 5.
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9. Phases 2/3/4 develop in parallel from Phase 1; the converge point is Phase 5. Phases 7–9 are post-v1 hardening passes.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Repo scaffold | 0/TBD | Not started | - |
-| 2. claude-security-hooks binary | 0/8 | Planned | - |
-| 3. Agent definitions + hook registration | 0/TBD | Not started | - |
-| 4. opengrep-mcp server + OpenGrep container | 0/TBD | Not started | - |
-| 5. End-to-end smoke test | 0/TBD | Not started | - |
-| 6. Documentation | 0/TBD | Not started | - |
+| 1. Repo scaffold | — | ✅ Complete | 2026-05-19 |
+| 2. claude-security-hooks binary | 8/8 | ✅ Complete | 2026-05-19 |
+| 3. Agent definitions + hook registration | — | ✅ Complete | 2026-05-23 |
+| 4. opengrep-mcp server + OpenGrep container | — | ✅ Complete | 2026-05-24 |
+| 5. End-to-end smoke test | — | ✅ Complete | 2026-05-24 |
+| 6. Documentation | — | ✅ Complete | 2026-05-24 |
+| 7. Extended test cases | — | ✅ Complete | 2026-05-24 |
+| 8. Automated E2E Testing | — | ✅ Complete | 2026-05-25 |
+| 9. opengrep-mcp server + infrastructure hardening | 0/2 | 🔄 In Progress | - |
