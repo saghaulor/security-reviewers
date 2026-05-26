@@ -71,6 +71,12 @@ var AuthzJointInvariants = []AuthzJointInvariant{
 		Severity:    SeverityHigh,
 		Check:       checkAZ7Joint,
 	},
+	{
+		ID:          "AZ-CodeRef",
+		Description: "if input has non-empty code_ref, verdict code_ref must match exactly",
+		Severity:    SeverityHigh,
+		Check:       checkAZCodeRefJoint,
+	},
 }
 
 // checkAZ1 verifies that the verdict has required fields and non-negative counts.
@@ -203,6 +209,23 @@ func checkAZ7Joint(in *schema.AuthzInput, v *schema.AuthzVerdict) []Violation {
 			Path:     "review_session_id",
 			Expected: in.ReviewSessionID,
 			Actual:   v.ReviewSessionID,
+		}}
+	}
+	return nil
+}
+
+// --- AZ-CodeRef (JOINT) ---
+func checkAZCodeRefJoint(in *schema.AuthzInput, v *schema.AuthzVerdict) []Violation {
+	// If input does not specify a code_ref, no check is performed (field is optional).
+	if in.CodeRef == "" {
+		return nil
+	}
+	// If input specifies a code_ref, verdict must echo it exactly.
+	if v.CodeRef != in.CodeRef {
+		return []Violation{{
+			Path:     "code_ref",
+			Expected: in.CodeRef,
+			Actual:   v.CodeRef,
 		}}
 	}
 	return nil
