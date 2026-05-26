@@ -248,10 +248,9 @@ func TestSubagentStartEvent_RejectsAgentName(t *testing.T) {
 
 // --- B1: Agent Tool Extra Fields Tests ---
 
-// TestPreToolUseEvent_RunInBackgroundRejected verifies that the run_in_background field
-// is currently rejected by DisallowUnknownFields. After Wave 1, TaskToolInput will include
-// the field and this test should be updated to assert it equals true.
-func TestPreToolUseEvent_RunInBackgroundRejected(t *testing.T) {
+// TestPreToolUseEvent_RunInBackgroundAccepted verifies that the run_in_background field
+// is now accepted and properly decoded (Wave 1: B1 GREEN).
+func TestPreToolUseEvent_RunInBackgroundAccepted(t *testing.T) {
 	payload := `{
 		"session_id": "test-session",
 		"transcript_path": "/path/to/transcript",
@@ -272,17 +271,17 @@ func TestPreToolUseEvent_RunInBackgroundRejected(t *testing.T) {
 	decoder.DisallowUnknownFields()
 
 	err := decoder.Decode(&event)
-	if err == nil {
-		t.Errorf("Decode with run_in_background returned nil error, want error for unknown field (B1 RED: field currently rejected)")
+	if err != nil {
+		t.Errorf("Decode with run_in_background returned error: %v", err)
 	}
-	if err != nil && !strings.Contains(err.Error(), "run_in_background") {
-		t.Errorf("Decode error does not mention run_in_background: %v", err)
+	if !event.ToolInput.RunInBackground {
+		t.Errorf("ToolInput.RunInBackground = %v, want true", event.ToolInput.RunInBackground)
 	}
 }
 
-// TestPostToolUseEvent_RunInBackgroundRejected verifies that the run_in_background field
-// in PostToolUse tool_input is currently rejected. Same as PreToolUse but for the PostToolUse hook.
-func TestPostToolUseEvent_RunInBackgroundRejected(t *testing.T) {
+// TestPostToolUseEvent_RunInBackgroundAccepted verifies that the run_in_background field
+// in PostToolUse tool_input is now accepted and properly decoded (Wave 1: B1 GREEN).
+func TestPostToolUseEvent_RunInBackgroundAccepted(t *testing.T) {
 	payload := `{
 		"session_id": "test-session",
 		"transcript_path": "/path/to/transcript",
@@ -306,17 +305,17 @@ func TestPostToolUseEvent_RunInBackgroundRejected(t *testing.T) {
 	decoder.DisallowUnknownFields()
 
 	err := decoder.Decode(&event)
-	if err == nil {
-		t.Errorf("Decode with run_in_background returned nil error, want error for unknown field (B1 RED: field currently rejected)")
+	if err != nil {
+		t.Errorf("Decode with run_in_background returned error: %v", err)
 	}
-	if err != nil && !strings.Contains(err.Error(), "run_in_background") {
-		t.Errorf("Decode error does not mention run_in_background: %v", err)
+	if !event.ToolInput.RunInBackground {
+		t.Errorf("ToolInput.RunInBackground = %v, want true", event.ToolInput.RunInBackground)
 	}
 }
 
-// TestPreToolUseEvent_ModelFieldRejected verifies that the model field in tool_input
-// is currently rejected. After Wave 1, TaskToolInput will include the field.
-func TestPreToolUseEvent_ModelFieldRejected(t *testing.T) {
+// TestPreToolUseEvent_ModelFieldAccepted verifies that the model field in tool_input
+// is now accepted and properly decoded (Wave 1: B1 GREEN).
+func TestPreToolUseEvent_ModelFieldAccepted(t *testing.T) {
 	payload := `{
 		"session_id": "test-session",
 		"transcript_path": "/path/to/transcript",
@@ -336,17 +335,17 @@ func TestPreToolUseEvent_ModelFieldRejected(t *testing.T) {
 	decoder.DisallowUnknownFields()
 
 	err := decoder.Decode(&event)
-	if err == nil {
-		t.Errorf("Decode with model field returned nil error, want error for unknown field (B1 RED: field currently rejected)")
+	if err != nil {
+		t.Errorf("Decode with model field returned error: %v", err)
 	}
-	if err != nil && !strings.Contains(err.Error(), "model") {
-		t.Errorf("Decode error does not mention model: %v", err)
+	if event.ToolInput.Model != "sonnet" {
+		t.Errorf("ToolInput.Model = %q, want 'sonnet'", event.ToolInput.Model)
 	}
 }
 
-// TestPreToolUseEvent_IsolationFieldRejected verifies that the isolation field in tool_input
-// is currently rejected. After Wave 1, TaskToolInput will include the field.
-func TestPreToolUseEvent_IsolationFieldRejected(t *testing.T) {
+// TestPreToolUseEvent_IsolationFieldAccepted verifies that the isolation field in tool_input
+// is now accepted and properly decoded (Wave 1: B1 GREEN).
+func TestPreToolUseEvent_IsolationFieldAccepted(t *testing.T) {
 	payload := `{
 		"session_id": "test-session",
 		"transcript_path": "/path/to/transcript",
@@ -366,10 +365,10 @@ func TestPreToolUseEvent_IsolationFieldRejected(t *testing.T) {
 	decoder.DisallowUnknownFields()
 
 	err := decoder.Decode(&event)
-	if err == nil {
-		t.Errorf("Decode with isolation field returned nil error, want error for unknown field (B1 RED: field currently rejected)")
+	if err != nil {
+		t.Errorf("Decode with isolation field returned error: %v", err)
 	}
-	if err != nil && !strings.Contains(err.Error(), "isolation") {
-		t.Errorf("Decode error does not mention isolation: %v", err)
+	if event.ToolInput.Isolation != "worktree" {
+		t.Errorf("ToolInput.Isolation = %q, want 'worktree'", event.ToolInput.Isolation)
 	}
 }

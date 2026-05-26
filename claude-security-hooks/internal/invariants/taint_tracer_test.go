@@ -295,7 +295,7 @@ func TestT6_SemgrepOrGoplsEvidence(t *testing.T) {
 			},
 			want: []invariants.Violation{{
 				Path:     "semgrep+gopls",
-				Expected: "semgrep.ran=true OR gopls.references_calls>0 (unless input_mismatch)",
+				Expected: "semgrep.ran=true OR gopls.references_calls>0 (unless input_mismatch or ambiguous)",
 				Actual:   "neither",
 			}},
 		},
