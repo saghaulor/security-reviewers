@@ -26,7 +26,9 @@ If any precondition fails, return a structured error document and stop immediate
 ```json
 {
   "working_directory": "/path/to/go-module",
-  "review_session_id": "abc123"
+  "review_session_id": "abc123",
+  "code_ref": "<git tree hash of working_directory, pre-computed by orchestration>",
+  "code_ref_dirty": false
 }
 ```
 
@@ -48,6 +50,10 @@ Execute the following steps in order. Steps 2-9 depend on step 1 completing succ
 **Step 1: Verify preconditions**
 
 Read `graphify-out/graph.json` to confirm it exists. Compute its SHA-256 hash — this becomes `graph_version` in the output. Call `mcp__graphify__graph_stats` to confirm the MCP server is reachable. If either check fails, return the error response shape from Section 2 and stop.
+
+**Step 1.5: Write code identity to output**
+
+The `code_ref` and `code_ref_dirty` values are pre-computed by the orchestration skill and passed in the input. Copy them verbatim into the go-index.json output. Do not recompute them. If `code_ref` is absent or empty in the input (non-git repo or pre-Phase-10 run), omit both fields from the output.
 
 **Step 2: Detect routers (parallel)**
 
@@ -134,6 +140,8 @@ The output MUST be a single JSON object conforming to `go-index/v1`. The `schema
 {
   "schema_version": "go-index/v1",
   "graph_version": "<sha256 of graphify-out/graph.json>",
+  "code_ref": "<git tree hash — omit if empty or absent from input>",
+  "code_ref_dirty": false,
   "routers_detected": ["chi", "net/http"],
   "entrypoints": [
     {
