@@ -18,12 +18,48 @@ Run `Bash: .claude/hooks/bin/claude-security-hooks uuid` from the project root a
 
 (`uuidgen` is not used because it may not be installed; `claude-security-hooks uuid` uses `crypto/rand` and is always available.)
 
-## Step 2: Record target and delete stale intermediate files
+## Step 1.5: Ensure hooks binary is current
+
+Rebuild and reinstall the hooks binary before any agent dispatch:
+
+```
+Bash: make -C /home/saghaulor/code/security_reviewer/claude-security-hooks install
+```
+
+This unconditionally runs `go build` and copies the result to `.claude/hooks/bin/claude-security-hooks`. If `make install` fails, stop — the pipeline cannot proceed without a working hooks binary.
+
+## Step 2: Record target, compute code identity, and delete stale files
 
 First, write TARGET_DIR to `.current-review` in the project root so the graphify MCP server wrapper knows which graph to serve:
 ```
 Bash: echo "TARGET_DIR" > /home/saghaulor/code/security_reviewer/.current-review
 ```
+
+Compute the code identity for this review run. First find the repo root and relative path:
+
+```
+Bash: git -C TARGET_DIR rev-parse --show-toplevel
+```
+
+Store as REPO_ROOT. If this fails (not a git repo), set CODE_REF="" and CODE_REF_DIRTY=false and skip the remaining git steps.
+
+```
+Bash: realpath --relative-to=REPO_ROOT TARGET_DIR
+```
+
+Store as RELATIVE_PATH.
+
+```
+Bash: git -C REPO_ROOT rev-parse HEAD:RELATIVE_PATH
+```
+
+Store as CODE_REF. If this fails, set CODE_REF="".
+
+```
+Bash: git -C REPO_ROOT status --porcelain RELATIVE_PATH
+```
+
+If output is non-empty, set CODE_REF_DIRTY=true. Otherwise CODE_REF_DIRTY=false.
 
 Then remove any existing intermediate files from the previous run. These files from any prior run are INVALID for this run because they were produced under a different SESSION_ID.
 
@@ -59,7 +95,9 @@ Spawn a Task with agent `go-cartographer` and the following input:
 ```json
 {
   "working_directory": "<TARGET_DIR>",
-  "review_session_id": "<SESSION_ID>"
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
 }
 ```
 
@@ -85,7 +123,9 @@ Input:
   "routes": <entrypoints array from go-index.json>,
   "authz_primitives": <authz_primitives array from go-index.json>,
   "sensitive_operations": [],
-  "review_session_id": "<SESSION_ID>"
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
 }
 ```
 
@@ -98,7 +138,9 @@ Input:
 {
   "working_directory": "<TARGET_DIR>",
   "oauth_locations": <oauth_locations object from go-index.json>,
-  "review_session_id": "<SESSION_ID>"
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
 }
 ```
 
@@ -116,7 +158,9 @@ Input:
     {"id": "I3", "statement": "OAuth state parameter is validated on callback before proceeding"},
     {"id": "I4", "statement": "Fund transfer operations validate that source account belongs to authenticated user"}
   ],
-  "review_session_id": "<SESSION_ID>"
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
 }
 ```
 
@@ -143,7 +187,9 @@ For each (handler entrypoint, SQL sink) pair, the input is:
   },
   "max_depth": 8,
   "semgrep_tier": "intrafile",
-  "review_session_id": "<SESSION_ID>"
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
 }
 ```
 
