@@ -30,20 +30,23 @@ completed_phases:
   - phase: 9
     name: opengrep-mcp server + infrastructure hardening
     completed_at: 2026-05-26
-current_phase: 10
+  - phase: 10
+    name: Hook compatibility + code-ref schema
+    completed_at: 2026-05-26
+current_phase: null
 next_phase: null
 total_phases: 10
 paused_at: null
-status: ready_to_execute
+status: all_phases_complete
 ---
 
 # Project State: security-reviewer
 
-**Phase 10 Wave 1 (Plan 10-02) complete — All GREEN implementations done.** All Wave 0 tests (20 total: B1 x4, B2 x1, E1 x15) now pass. TaskToolInput, T6 amendment, 4 code-ref joint invariants, and 11 schema fields all implemented. Binary rebuilt and functional.
+**Phase 10 COMPLETE — All 3 waves executed successfully.** All Wave 0 tests (20 total: B1 x4, B2 x1, E1 x15) passing. Go implementation complete (Plan 10-02). Configuration and documentation updates complete (Plan 10-03). Binary rebuilt. All four blockers (B1–B4) unblocked; code_ref schema integrated end-to-end.
 
 ## Current Phase: 10 — Hook compatibility + code-ref schema
 
-**Phase status:** Wave 0 (TDD RED) complete; Wave 1 Plan 02 (GREEN) complete; Plan 03 (config) pending
+**Phase status:** ALL PLANS COMPLETE — Wave 0 (RED), Wave 1 (GREEN), Wave 2 (config) executed and verified
 
 **Plan 01 completed (2026-05-26):** TDD RED phase — 20 failing tests written
 - B1 tests (4): Agent tool extra fields rejection tests (events_test.go)
@@ -62,10 +65,12 @@ status: ready_to_execute
 - Binary rebuilt and verified functional
 - Commits: 1e17858, 781ac46, e8bee3b, c5cb5a3, 367cb36, 8b5356f, cadb67b (SUMMARY)
 
-**Plan 03 pending (Wave 1):** Configuration changes — B3, B4, additional text/config updates
-- B3: T9 absolute path validation
-- B4: Binary freshness validation
-- Additional configuration and documentation updates
+**Plan 03 completed (2026-05-26):** Configuration and documentation changes — B3, B4, E1 wiring
+- B3: T9-PATH hard rule added to go-taint-tracer.md §6 (workspace-relative paths required)
+- B4: Step 1.5 added to security-review.md (unconditional `make install` before agent dispatch)
+- E1: code_ref computation + propagation wired through cartographer → tracers → synthesis
+- Configuration: 5 agent definitions + 1 skill file updated with code_ref/code_ref_dirty specifications
+- Commits: 7f4a7d4, 5756313, 3bd10eb, 4cc9417, 62af270, 5796725, ec31e87, c35bde8, 0080d26 (SUMMARY)
 
 ## Decisions
 
@@ -92,3 +97,11 @@ status: ready_to_execute
   - 11 schema structs expanded with CodeRef + CodeRefDirty fields
   - Binary rebuilt and functional
   - 7 commits: schema, invariants, tests, binary
+- Phase 10 Plan 03 complete: Configuration + documentation — B3/B4/E1 wiring (2026-05-26)
+  - T9-PATH hard rule added to go-taint-tracer.md for workspace-relative path enforcement
+  - Step 1.5 added to security-review.md for unconditional binary rebuild
+  - code_ref computation in Step 2 + propagation through Steps 4/6 in security-review.md
+  - code_ref echo instructions added to 4 tracer agent definitions
+  - code_ref propagation step added to synthesis.md
+  - 9 commits: 6 agent def updates + 1 skill update + SUMMARY
+- **PHASE 10 COMPLETED:** All three waves executed; all blockers (B1–B4) unblocked; code_ref schema integrated end-to-end
