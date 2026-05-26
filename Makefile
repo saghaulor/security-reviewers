@@ -19,9 +19,11 @@ help:
 verify-opengrep-mcp:
 	@test -f $(OPENGREP_BIN) || (echo "FAIL: $(OPENGREP_BIN) does not exist. Run: make build-opengrep-mcp" && exit 1)
 	@test -x $(OPENGREP_BIN) || (echo "FAIL: $(OPENGREP_BIN) is not executable" && exit 1)
-	@file $(OPENGREP_BIN) | grep -q "statically linked" || (echo "FAIL: $(OPENGREP_BIN) is not statically linked" && exit 1)
+	@readelf -d $(OPENGREP_BIN) 2>&1 | grep -q "no dynamic section" || ldd $(OPENGREP_BIN) 2>&1 | grep -q "not a dynamic executable" || (echo "FAIL: $(OPENGREP_BIN) is not statically linked" && exit 1)
 	@echo "OK: opengrep-mcp binary verified"
 
-## build-opengrep-mcp: Stub — will be implemented in Plan 09-02.
+## build-opengrep-mcp: Build and install the opengrep-mcp binary from the standalone repo.
 build-opengrep-mcp:
-	@echo "build-opengrep-mcp: not yet implemented — see Plan 09-02"
+	@mkdir -p .claude/hooks/bin
+	$(MAKE) -C /home/saghaulor/code/opengrep-mcp build
+	@cp /home/saghaulor/code/opengrep-mcp/bin/opengrep-mcp .claude/hooks/bin/opengrep-mcp
