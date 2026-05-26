@@ -7,6 +7,8 @@ type TaintInput struct {
 	MaxDepth          int           `json:"max_depth"`
 	SemgrepTier       string        `json:"semgrep_tier"`
 	ReviewSessionID   string        `json:"review_session_id,omitempty"`
+	CodeRef           string        `json:"code_ref,omitempty"`
+	CodeRefDirty      bool          `json:"code_ref_dirty,omitempty"`
 }
 
 type TaintEndpoint struct {
@@ -26,6 +28,8 @@ type TaintVerdict struct {
 	SanitizersUnverified   []SanitizerUnverified  `json:"sanitizers_unverified,omitempty"`
 	Notes                  string                 `json:"notes,omitempty"`
 	ReviewSessionID        string                 `json:"review_session_id,omitempty"`
+	CodeRef                string                 `json:"code_ref,omitempty"`
+	CodeRefDirty           bool                   `json:"code_ref_dirty,omitempty"`
 }
 
 type TaintPathStep struct {

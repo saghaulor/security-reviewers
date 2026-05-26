@@ -4,6 +4,8 @@ package schema
 type CartographerIndex struct {
 	SchemaVersion     string                     `json:"schema_version"`
 	GraphVersion      string                     `json:"graph_version"`
+	CodeRef           string                     `json:"code_ref,omitempty"`
+	CodeRefDirty      bool                       `json:"code_ref_dirty,omitempty"`
 	RoutersDetected   []string                   `json:"routers_detected,omitempty"`
 	Entrypoints       []Entrypoint               `json:"entrypoints,omitempty"`
 	SinksByKind       map[string][]SinkLocation  `json:"sinks_by_kind,omitempty"` // Keys are kind enum values

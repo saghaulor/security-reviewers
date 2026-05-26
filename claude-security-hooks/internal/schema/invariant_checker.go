@@ -5,6 +5,8 @@ type InvariantCheckerInput struct {
 	FlowName          string            `json:"flow_name"`
 	Invariants        []InputInvariant  `json:"invariants"`
 	ReviewSessionID   string            `json:"review_session_id,omitempty"`
+	CodeRef           string            `json:"code_ref,omitempty"`
+	CodeRefDirty      bool              `json:"code_ref_dirty,omitempty"`
 }
 
 type InputInvariant struct {
@@ -18,6 +20,8 @@ type InvariantCheckerVerdict struct {
 	FlowName          string            `json:"flow_name"`
 	Results           []InvariantResult `json:"results,omitempty"`
 	ReviewSessionID   string            `json:"review_session_id,omitempty"`
+	CodeRef           string            `json:"code_ref,omitempty"`
+	CodeRefDirty      bool              `json:"code_ref_dirty,omitempty"`
 }
 
 type InvariantResult struct {

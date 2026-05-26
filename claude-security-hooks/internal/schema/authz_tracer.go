@@ -6,6 +6,8 @@ type AuthzInput struct {
 	AuthzPrimitives      []AuthzInputPrimitive   `json:"authz_primitives"`
 	SensitiveOperations  []SensitiveOp           `json:"sensitive_operations"`
 	ReviewSessionID      string                  `json:"review_session_id,omitempty"`
+	CodeRef              string                  `json:"code_ref,omitempty"`
+	CodeRefDirty         bool                    `json:"code_ref_dirty,omitempty"`
 }
 
 type AuthzRoute struct {
@@ -33,6 +35,8 @@ type AuthzVerdict struct {
 	Findings            []AuthzFinding  `json:"findings,omitempty"`
 	WeakPrimitives      []WeakPrimitive `json:"weak_primitives,omitempty"`
 	ReviewSessionID     string          `json:"review_session_id,omitempty"`
+	CodeRef             string          `json:"code_ref,omitempty"`
+	CodeRefDirty        bool            `json:"code_ref_dirty,omitempty"`
 }
 
 type AuthzSummary struct {

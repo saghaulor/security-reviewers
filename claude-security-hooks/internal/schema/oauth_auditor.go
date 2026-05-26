@@ -6,6 +6,8 @@ type OAuthInput struct {
 	TargetProfile   string         `json:"target_profile"`
 	FeaturesInUse   []string       `json:"features_in_use,omitempty"`
 	ReviewSessionID string         `json:"review_session_id,omitempty"`
+	CodeRef         string         `json:"code_ref,omitempty"`
+	CodeRefDirty    bool           `json:"code_ref_dirty,omitempty"`
 }
 
 // OAuthVerdict represents the output of the OAuth auditor.
@@ -14,6 +16,8 @@ type OAuthVerdict struct {
 	Checklist           []ChecklistEntry   `json:"checklist,omitempty"`
 	TaintPairs          []TaintPair        `json:"taint_pairs,omitempty"`
 	ReviewSessionID     string             `json:"review_session_id,omitempty"`
+	CodeRef             string             `json:"code_ref,omitempty"`
+	CodeRefDirty        bool               `json:"code_ref_dirty,omitempty"`
 }
 
 type ChecklistEntry struct {

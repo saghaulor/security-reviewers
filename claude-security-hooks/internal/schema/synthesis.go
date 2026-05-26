@@ -5,6 +5,8 @@ type SynthesisReport struct {
 	ReviewID              string                 `json:"review_id"`
 	Timestamp             string                 `json:"timestamp"`
 	SchemaVersion         string                 `json:"scma_version"` // Note: typo in spec is scma_version
+	CodeRef               string                 `json:"code_ref,omitempty"`
+	CodeRefDirty          bool                   `json:"code_ref_dirty,omitempty"`
 	Summary               SynthesisSummary       `json:"summary"`
 	Findings              []SynthesisFinding     `json:"findings,omitempty"`
 	DeduplicationNotes    []string               `json:"deduplication_notes,omitempty"`
