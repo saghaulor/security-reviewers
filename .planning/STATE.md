@@ -55,17 +55,25 @@ Phase 9 in progress. Phase 8 (Automated E2E Testing) completed 2026-05-25.
 - `security-review.md` Step 3 Docker bootstrap removed; steps renumbered 0-8 sequentially
 - Commits: 8700257 (Makefile RED gate), e44460c (security-review.md cleanup)
 
-**Still to implement (the main Phase 9 deliverable):**
-- Plan 02: `build-opengrep-mcp` Makefile target (delegate to standalone repo, copy binary to .claude/hooks/bin)
-- Plan 03: `.mcp.json` switch from SSE to stdio transport
+**Plan 02 completed (2026-05-26):**
+- `build-opengrep-mcp` Makefile target implemented (TDD GREEN phase): delegates to standalone repo, copies static binary to `.claude/hooks/bin/opengrep-mcp`
+- `.mcp.json` opengrep entry switched from SSE to stdio; `SAST_ENGINE=opengrep` env set; `SEMGREP_APP_TOKEN` excluded
+- `make verify-opengrep-mcp` passes (GREEN state confirmed)
+- Commits: ade319e (Makefile GREEN + verify fix), 249c118 (.mcp.json stdio)
+
+**Still to implement:**
+- None — Phase 9 deliverables complete
 
 ## Decisions
 
 - D-04 (stdio transport): MCP transport is stdio — Claude Code spawns opengrep-mcp as subprocess
 - D-06 (Step 3 removal): opengrep-mcp lifecycle managed by Claude Code runtime, not orchestration command
 - D-07 (binary path): .claude/hooks/bin/opengrep-mcp is the install target
+- D-08 (token security): SEMGREP_APP_TOKEN excluded from .mcp.json; user must supply via shell env
+- D-09 (static-link check): readelf/ldd used instead of file cmd (not available in WSL2)
 
 ## Roadmap Evolution
 
 - Phase 9 added: opengrep-mcp SSE server + infrastructure hardening (2026-05-26)
 - Phase 9 Plan 01 complete: Makefile TDD RED gate + security-review.md cleanup (2026-05-26)
+- Phase 9 Plan 02 complete: build-opengrep-mcp GREEN phase + .mcp.json stdio wiring (2026-05-26)
