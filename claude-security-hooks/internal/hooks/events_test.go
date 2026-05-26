@@ -125,6 +125,33 @@ func TestPostToolUseEvent_ContentArray(t *testing.T) {
 	}
 }
 
+func TestPostToolUseEvent_ToolResponseWithStatus(t *testing.T) {
+	// Claude Code now includes tool_response.status; DisallowUnknownFields must not reject it.
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Task",
+		"tool_input": {"subagent_type": "go-taint-tracer", "prompt": "test"},
+		"tool_use_id": "123",
+		"tool_response": {
+			"content": "verdict output",
+			"status": "success"
+		}
+	}`
+
+	var event hooks.PostToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		t.Fatalf("Decode failed with tool_response.status present: %v", err)
+	}
+	if event.ToolResponse.Status != "success" {
+		t.Errorf("ToolResponse.Status = %q, want 'success'", event.ToolResponse.Status)
+	}
+}
+
 func TestSubagentStartEvent_UsesAgentType(t *testing.T) {
 	payload := `{
 		"session_id": "test",

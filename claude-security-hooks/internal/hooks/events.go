@@ -29,9 +29,11 @@ type PreToolUseEvent struct {
 }
 
 // ToolResponse — content is string OR array per live docs; RawMessage handles both.
+// Status field added: Claude Code runtime now includes tool_response.status (e.g. "success", "error").
 type ToolResponse struct {
 	Content json.RawMessage `json:"content"`
 	Type    string          `json:"type,omitempty"`
+	Status  string          `json:"status,omitempty"`
 }
 
 // PostToolUseEvent adds tool_response.
