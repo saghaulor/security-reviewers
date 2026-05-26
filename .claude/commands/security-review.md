@@ -35,22 +35,7 @@ Bash: rm -f TARGET_DIR/taint-verdict-*.json
 
 Replace TARGET_DIR with the actual resolved path.
 
-## Step 3: Bootstrap opengrep-mcp
-
-Issue `GET http://localhost:8000/health` with a 5-second timeout using Bash curl.
-
-- If the server responds with 2xx, proceed to Step 4.
-- If unreachable, start the container:
-  ```
-  Bash: docker stop opengrep-mcp-e2e-phase8 2>/dev/null; true
-  Bash: docker rm opengrep-mcp-e2e-phase8 2>/dev/null; true
-  Bash: docker run -d --name opengrep-mcp-e2e-phase8 -p 8000:8000 opengrep-mcp:latest
-  ```
-  Then poll `GET http://localhost:8000/health` every second for up to 30 seconds. If it never responds 2xx, **stop with error**: `"opengrep-mcp bootstrap failed: health check timeout after 30 seconds"`.
-
-If Docker is unavailable or the image doesn't exist, **stop with a clear error message**.
-
-## Step 4: Run pre-pass artifacts
+## Step 3: Run pre-pass artifacts
 
 Run these two commands with TARGET_DIR as the working directory:
 
@@ -67,7 +52,7 @@ Run these two commands with TARGET_DIR as the working directory:
    - If govulncheck exits non-zero (vulnerabilities found), that is expected — the output is still valid JSON; continue.
    - If it fails for other reasons (network, permission), write `{"available":false}` and continue.
 
-## Step 5: Run cartographer (sequential)
+## Step 4: Run cartographer (sequential)
 
 Spawn a Task with agent `go-cartographer` and the following input:
 
@@ -80,15 +65,15 @@ Spawn a Task with agent `go-cartographer` and the following input:
 
 Wait for it to complete. If it fails or produces an error response, stop with error. The output will be written to `TARGET_DIR/go-index.json`.
 
-## Step 6: Read cartographer output
+## Step 5: Read cartographer output
 
-Read `TARGET_DIR/go-index.json`. Extract the following fields for use in Step 7:
+Read `TARGET_DIR/go-index.json`. Extract the following fields for use in Step 6:
 - `entrypoints` — array of route objects
 - `authz_primitives` — array of authz primitive objects  
 - `sinks_by_kind` — map of sink kind to array of sink locations
 - `oauth_locations` — OAuth surface locations
 
-## Step 7: Run tracers (parallel)
+## Step 6: Run tracers (parallel)
 
 Spawn all four tracer agents simultaneously using parallel Task invocations. Do not wait for one before starting the others. Pass SESSION_ID to each.
 
@@ -164,9 +149,9 @@ For each (handler entrypoint, SQL sink) pair, the input is:
 
 Name each output file `TARGET_DIR/taint-verdict-<handler-name>-sqli.json` where `<handler-name>` is derived from the handler's FQN (last component, lowercased, with "Handler" stripped).
 
-## Step 8: Run synthesis (sequential)
+## Step 7: Run synthesis (sequential)
 
-Wait for ALL four tracer agents from Step 7 to complete. Then spawn a Task with agent `synthesis`:
+Wait for ALL four tracer agents from Step 6 to complete. Then spawn a Task with agent `synthesis`:
 
 ```json
 {
@@ -177,7 +162,7 @@ Wait for ALL four tracer agents from Step 7 to complete. Then spawn a Task with 
 
 Wait for it to complete. It will produce `TARGET_DIR/review-report.json` and `TARGET_DIR/review-report.md`.
 
-## Step 9: Report completion
+## Step 8: Report completion
 
 Once synthesis completes, report:
 - The review ID (SESSION_ID)
@@ -192,4 +177,4 @@ Once synthesis completes, report:
 - **Always generate a fresh SESSION_ID** — never reuse a session ID from a previous run.
 - **Never read old intermediate files** — Step 2 deletes them; there should be nothing to read before the agents create them.
 - **Pass SESSION_ID to every agent** — it is required in all Task inputs (cartographer, all 4 tracers, synthesis).
-- **Parallel tracers** — all four tracer Tasks in Step 7 must be started simultaneously, not sequentially.
+- **Parallel tracers** — all four tracer Tasks in Step 6 must be started simultaneously, not sequentially.
