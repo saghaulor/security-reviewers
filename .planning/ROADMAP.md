@@ -120,8 +120,8 @@ Plans:
 **Plans**: 2 plans across 2 waves
 
 Plans:
-- [ ] 09-01-PLAN.md — Wave 1: TDD verify target (RED) + remove Step 3 from orchestration command
-- [ ] 09-02-PLAN.md — Wave 2: build-opengrep-mcp implementation (GREEN) + .mcp.json stdio wiring
+- [x] 09-01-PLAN.md — Wave 1: TDD verify target (RED) + remove Step 3 from orchestration command
+- [x] 09-02-PLAN.md — Wave 2: build-opengrep-mcp implementation (GREEN) + .mcp.json stdio wiring
 
 ## Progress
 
@@ -138,4 +138,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Documentation | — | ✅ Complete | 2026-05-24 |
 | 7. Extended test cases | — | ✅ Complete | 2026-05-24 |
 | 8. Automated E2E Testing | — | ✅ Complete | 2026-05-25 |
-| 9. opengrep-mcp server + infrastructure hardening | 0/2 | 🔄 In Progress | - |
+| 9. opengrep-mcp server + infrastructure hardening | 2/2 | ✅ Complete (SC5 pending human verify) | 2026-05-26 |

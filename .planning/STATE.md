@@ -27,16 +27,19 @@ completed_phases:
   - phase: 8
     name: Automated E2E Testing
     completed_at: 2026-05-25
-current_phase: 9
+  - phase: 9
+    name: opengrep-mcp server + infrastructure hardening
+    completed_at: 2026-05-26
+current_phase: null
 next_phase: null
 total_phases: 9
 paused_at: null
-status: in_progress
+status: complete
 ---
 
 # Project State: security-reviewer
 
-Phase 9 in progress. Phase 8 (Automated E2E Testing) completed 2026-05-25.
+**All 9 phases complete.** Phase 9 (opengrep-mcp stdio integration) completed 2026-05-26. SC5 (Claude Code tool discovery) pending one manual verify in a fresh session.
 
 ## Current Phase: 9 — opengrep-mcp SSE server + infrastructure hardening
 
