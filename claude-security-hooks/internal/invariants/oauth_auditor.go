@@ -35,6 +35,7 @@ var OAuthJointInvariants = []OAuthJointInvariant{
 	{ID: "OA6", Description: "oauth_2_0 + authorize_endpoint requires implicit-flow-disallowed check evaluated", Severity: SeverityHigh, Check: checkOA6Joint},
 	{ID: "OA7", Description: "absent feature checks must be not_applicable, never pass", Severity: SeverityHigh, Check: checkOA7Joint},
 	{ID: "OA8", Description: "if input has review_session_id, verdict review_session_id must match exactly", Severity: SeverityHigh, Check: checkOA8Joint},
+	{ID: "OA-CodeRef", Description: "if input has non-empty code_ref, verdict code_ref must match exactly", Severity: SeverityHigh, Check: checkOACodeRefJoint},
 }
 
 // oauthCheckFeature maps check_id substring → feature name.
@@ -218,6 +219,23 @@ func checkOA8Joint(in *schema.OAuthInput, v *schema.OAuthVerdict) []Violation {
 			Path:     "review_session_id",
 			Expected: in.ReviewSessionID,
 			Actual:   v.ReviewSessionID,
+		}}
+	}
+	return nil
+}
+
+// --- OA-CodeRef (JOINT) ---
+func checkOACodeRefJoint(in *schema.OAuthInput, v *schema.OAuthVerdict) []Violation {
+	// If input does not specify a code_ref, no check is performed (field is optional).
+	if in.CodeRef == "" {
+		return nil
+	}
+	// If input specifies a code_ref, verdict must echo it exactly.
+	if v.CodeRef != in.CodeRef {
+		return []Violation{{
+			Path:     "code_ref",
+			Expected: in.CodeRef,
+			Actual:   v.CodeRef,
 		}}
 	}
 	return nil
