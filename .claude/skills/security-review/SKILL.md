@@ -1,247 +1,243 @@
 ---
 name: security-review
-description: Systematic security review of Go services using multi-agent analysis (taint tracing, authorization verification, OAuth auditing, invariant checking)
-version: 1.0.0
-author: Stephen Aghaulor
-keywords: [security, go, vulnerability, taint-analysis, authorization, oauth, code-review]
+description: Run a complete security review of a Go module using specialist agents and the opengrep-mcp scanner
+argument-hint: "<path-to-go-service>"
+allowed-tools:
+  - Task
+  - Read
+  - Glob
+  - Bash
 ---
 
-# security-review Skill
+<objective>
+Run a full 8-step security review pipeline against a Go service directory.
+Dispatches go-cartographer (sequential), then in parallel go-taint-tracer,
+go-authz-tracer, go-oauth-auditor, and invariant-checker, then synthesis.
+Produces TARGET_DIR/review-report.json and TARGET_DIR/review-report.md.
 
-A Claude Code plugin for systematic security review of Go services. Dispatches six specialized Claude agents to detect taint flows (SQL injection, command injection, SSRF, path traversal, XXE, unsafe deserialization, template injection), authorization bypasses, OAuth vulnerabilities, and business-logic invariant violations.
+Flow: Parse target → Generate session ID → Rebuild hooks binary → Clean stale files →
+Pre-pass (codegraph + govulncheck) → Cartographer → Parallel tracers → Synthesis → Report
+</objective>
 
-## Quick Start
+You are running a full security review pipeline. Follow every step below in order. **Do not skip any step. Do not reuse existing intermediate files.** This is a fresh scan.
 
-Once installed, use the slash command:
+## Step 0: Parse the target directory
 
-```bash
-/security-review /path/to/go/service
+The working directory is `$ARGUMENTS`. If `$ARGUMENTS` is empty, use `.` (current directory). Resolve it to an absolute path using `Bash: realpath $ARGUMENTS`.
+
+Store this as TARGET_DIR. All subsequent steps use this path.
+
+## Step 1: Generate a session ID
+
+Run `Bash: .claude/hooks/bin/claude-security-hooks uuid` from the project root and store the output (trimmed) as SESSION_ID. This UUID will be passed to every agent and embedded in all output files so results can be traced to this exact run.
+
+(`uuidgen` is not used because it may not be installed; `claude-security-hooks uuid` uses `crypto/rand` and is always available.)
+
+## Step 1.5: Ensure hooks binary is current
+
+Rebuild and reinstall the hooks binary before any agent dispatch:
+
+```
+Bash: make -C /home/saghaulor/code/security_reviewer/claude-security-hooks install
 ```
 
-This produces a `review-report.json` with structured findings:
+This unconditionally runs `go build` and copies the result to `.claude/hooks/bin/claude-security-hooks`. If `make install` fails, stop — the pipeline cannot proceed without a working hooks binary.
+
+## Step 2: Record target, compute code identity, and delete stale files
+
+First, write TARGET_DIR to `.current-review` in the project root so the codegraph MCP server wrapper knows which graph to serve:
+```
+Bash: echo "$TARGET_DIR" > /home/saghaulor/code/security_reviewer/.current-review
+```
+
+Compute the code identity for this review run. First find the repo root and relative path:
+
+```
+Bash: git -C TARGET_DIR rev-parse --show-toplevel
+```
+
+Store as REPO_ROOT. If this fails (not a git repo), set CODE_REF="" and CODE_REF_DIRTY=false and skip the remaining git steps.
+
+```
+Bash: realpath --relative-to=REPO_ROOT TARGET_DIR
+```
+
+Store as RELATIVE_PATH.
+
+```
+Bash: git -C REPO_ROOT rev-parse HEAD:RELATIVE_PATH
+```
+
+Store as CODE_REF. If this fails, set CODE_REF="".
+
+```
+Bash: git -C REPO_ROOT status --porcelain RELATIVE_PATH
+```
+
+If output is non-empty, set CODE_REF_DIRTY=true. Otherwise CODE_REF_DIRTY=false.
+
+Then remove any existing intermediate files from the previous run. These files from any prior run are INVALID for this run because they were produced under a different SESSION_ID.
+
+Run the following (ignore errors if files don't exist):
+```
+Bash: rm -f TARGET_DIR/go-index.json TARGET_DIR/authz-findings.json TARGET_DIR/oauth-checklist.json TARGET_DIR/invariant-results.json TARGET_DIR/review-report.json TARGET_DIR/review-report.md
+Bash: rm -f TARGET_DIR/taint-verdict-*.json
+```
+
+Replace TARGET_DIR with the actual resolved path.
+
+## Step 3: Run pre-pass artifacts
+
+Run these two commands with TARGET_DIR as the working directory:
+
+1. `Bash: codegraph init TARGET_DIR` (idempotent — safe to re-run if already initialized)
+   - This creates `.codegraph/codegraph.db` inside TARGET_DIR on first run; warns and exits 0 if already initialized.
+2. `Bash: codegraph index TARGET_DIR`
+   - This populates or refreshes `.codegraph/codegraph.db` with the current source index.
+   - If it fails, delete `TARGET_DIR/.codegraph/` and re-run both `codegraph init TARGET_DIR` and `codegraph index TARGET_DIR` once before stopping with error. This handles corrupt or version-mismatched databases from prior sessions.
+
+3. Run govulncheck via Docker (always — do not rely on a local govulncheck install):
+   ```
+   Bash: docker run --rm -v TARGET_DIR:/workspace -w /workspace golang:latest \
+     sh -c "go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck -json ./... > govulncheck.json 2>govulncheck.err"
+   ```
+   - If Docker or the image is unavailable, write `{"available":false}` to `TARGET_DIR/govulncheck.json` and continue.
+   - If govulncheck exits non-zero (vulnerabilities found), that is expected — the output is still valid JSON; continue.
+   - If it fails for other reasons (network, permission), write `{"available":false}` and continue.
+
+## Step 4: Run cartographer (sequential)
+
+Spawn a Task with agent `go-cartographer` and the following input:
 
 ```json
 {
-  "findings": [
-    {
-      "class": "injection|authz|oauth",
-      "confidence": "high|medium|low",
-      "title": "SQL injection in user lookup",
-      "evidence": { ... }
-    }
-  ]
+  "working_directory": "<TARGET_DIR>",
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
 }
 ```
 
-Parse with jq:
+Wait for it to complete. If it fails or produces an error response, stop with error. The output will be written to `TARGET_DIR/go-index.json`.
 
-```bash
-jq '.findings[] | select(.confidence == "high") | .title' review-report.json
-```
+## Step 5: Read cartographer output
 
-## How It Works
+Read `TARGET_DIR/go-index.json`. Extract the following fields for use in Step 6:
+- `entrypoints` — array of route objects
+- `authz_primitives` — array of authz primitive objects
+- `sinks_by_kind` — map of sink kind to array of sink locations
+- `oauth_locations` — OAuth surface locations
 
-The skill runs through four stages:
+## Step 6: Run tracers (parallel)
 
-1. **Pre-Pass** (one-time setup)
-   - Analyze known CVEs with `govulncheck`
-   - Build structural code graph with `graphify`
+Spawn all four tracer agents simultaneously using parallel Task invocations. Do not wait for one before starting the others. Pass SESSION_ID to each.
 
-2. **Cartographer** (sequential)
-   - Index HTTP handlers, RPC methods (entrypoints)
-   - Map SQL queries, exec calls, OAuth endpoints (sinks)
-   - Discover middleware chains and authz boundaries
-   - Output: `go-index.json`
+### Tracer 1: go-authz-tracer
 
-3. **Parallel Fan-Out** (six agents in parallel)
-   - **go-taint-tracer**: Source→sink taint propagation for injections
-   - **go-authz-tracer**: Middleware chain verification for IDOR/bypass
-   - **go-oauth-auditor**: RFC 9700 / OIDC Core conformance
-   - **invariant-checker**: Business-logic assertions (e.g., payment flows)
-   - (Two additional specialized tracers for advanced patterns)
-
-4. **Synthesis** (aggregation)
-   - Deduplicates findings
-   - Ranks by severity and confidence
-   - Outputs `review-report.json` + `review-report.md`
-
-**Key insight:** The cartographer runs once and its structural index is reused by all downstream agents. This avoids redundant codebase analysis while parallelizing tracer work.
-
-## Installation
-
-### Prerequisites
-
-- **Claude Code** CLI installed (latest version)
-- **Docker** running locally (for Semgrep container)
-- **Go** 1.19+ (to build the hooks binary)
-- **git** (to clone the repo)
-
-### 1-Minute Setup
-
-```bash
-# Clone the repo
-git clone git@github.com:saghaulor/security-reviewers.git
-cd security-reviewers
-
-# Run the automated setup
-./scripts/install.sh
-
-# Verify installation
-/security-review examples/sample-vulnerable-service/
-```
-
-The setup script will:
-1. Build the `claude-security-hooks` binary
-2. Clone and build the `opengrep-mcp` server (if not present)
-3. Register the skill in Claude Code
-4. Test the integration
-
-### Manual Setup (if automated script fails)
-
-See `INSTALL.md` for detailed step-by-step instructions.
-
-## Security Model
-
-- **Hooks binary** (`claude-security-hooks`): Per-agent output validation
-  - Checks all tracer verdicts against 51 assertions
-  - Blocks malformed JSON
-  - Injects context at agent startup
-  - Built with `CGO_ENABLED=0` (no C dependencies, portable)
-
-- **OpenGrep MCP server** (`opengrep-mcp`): Pattern scanning
-  - Runs Semgrep in isolated Docker containers
-  - Mounts code read-only
-  - Kills containers on timeout
-  - Never logs Pro API tokens
-
-- **Agents**: Claude agents bound to the skill
-  - No file-write permissions (read-only code analysis)
-  - Confined to provided code scope
-  - All verdicts validated before synthesis
-
-## Troubleshooting
-
-**Docker not running?**
-```bash
-docker ps   # Should list running containers
-```
-
-**Semgrep container not available?**
-```bash
-docker pull returntocorp/semgrep:1.55.0
-```
-
-**Hooks binary not found?**
-```bash
-cd claude-security-hooks && make build
-```
-
-**OpenGrep MCP not responding?**
-```bash
-# Check if server is running on localhost:8000
-curl http://localhost:8000/health || echo "Server not running"
-```
-
-## Output Structure
-
-### review-report.json
-
+Input:
 ```json
 {
-  "findings": [
-    {
-      "class": "injection",
-      "confidence": "high",
-      "title": "SQL injection in GetUser handler",
-      "cwe": "CWE-89",
-      "evidence": {
-        "source": "http.Request.URL.Query",
-        "sink": "database/sql.QueryRow",
-        "path": "handlers.go:42 → db.go:15",
-        "snippet": "..."
-      }
-    }
+  "routes": <entrypoints array from go-index.json>,
+  "authz_primitives": <authz_primitives array from go-index.json>,
+  "sensitive_operations": [],
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
+}
+```
+
+Output file: `TARGET_DIR/authz-findings.json`
+
+### Tracer 2: go-oauth-auditor
+
+Input:
+```json
+{
+  "working_directory": "<TARGET_DIR>",
+  "oauth_locations": <oauth_locations object from go-index.json>,
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
+}
+```
+
+Output file: `TARGET_DIR/oauth-checklist.json`
+
+### Tracer 3: invariant-checker
+
+Input:
+```json
+{
+  "flow_name": "security-review",
+  "invariants": [
+    {"id": "I1", "statement": "No SQL query is constructed by string concatenation with user-controlled input without parameterization"},
+    {"id": "I2", "statement": "All HTTP handlers that modify state require authentication before processing"},
+    {"id": "I3", "statement": "OAuth state parameter is validated on callback before proceeding"},
+    {"id": "I4", "statement": "Fund transfer operations validate that source account belongs to authenticated user"}
   ],
-  "statistics": {
-    "total_findings": 1,
-    "high_confidence": 1,
-    "medium_confidence": 0,
-    "low_confidence": 0,
-    "analysis_duration_seconds": 45
-  }
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
 }
 ```
 
-### review-report.md
+Output file: `TARGET_DIR/invariant-results.json`
 
-Human-readable summary with recommended fixes.
+### Tracer 4: go-taint-tracer (one invocation per SQL sink)
 
-## Configuration
+For each sink in `sinks_by_kind.sql_exec` from go-index.json, spawn a separate `go-taint-tracer` Task. Construct source/sink pairs by matching each SQL sink's file/line to the nearest handler function from `entrypoints`.
 
-After installation, you can adjust permissions in `~/.claude/CLAUDE.md` or project-level `.claude/settings.json` to reduce permission prompts:
+For each (handler entrypoint, SQL sink) pair, the input is:
+```json
+{
+  "source": {
+    "file": "<handler file from entrypoints>",
+    "line": <handler line from entrypoints>,
+    "expr": "r.URL.Query().Get(\"...\") or r.PostForm or r.Body",
+    "kind": "http_query"
+  },
+  "sink": {
+    "file": "<sink file>",
+    "line": <sink line>,
+    "expr": "<sink callee>",
+    "kind": "sql_exec"
+  },
+  "max_depth": 8,
+  "semgrep_tier": "intrafile",
+  "review_session_id": "<SESSION_ID>",
+  "code_ref": "<CODE_REF>",
+  "code_ref_dirty": <CODE_REF_DIRTY>
+}
+```
+
+Name each output file `TARGET_DIR/taint-verdict-<handler-name>-sqli.json` where `<handler-name>` is derived from the handler's FQN (last component, lowercased, with "Handler" stripped).
+
+## Step 7: Run synthesis (sequential)
+
+Wait for ALL four tracer agents from Step 6 to complete. Then spawn a Task with agent `synthesis`:
 
 ```json
 {
-  "permissions": {
-    "allow": [
-      "Bash(go *)",
-      "Bash(docker *)",
-      "Bash(make *)"
-    ]
-  }
+  "working_directory": "<TARGET_DIR>",
+  "review_id": "<SESSION_ID>"
 }
 ```
 
-## Example: Review a Sample Vulnerable Service
+Wait for it to complete. It will produce `TARGET_DIR/review-report.json` and `TARGET_DIR/review-report.md`.
 
-```bash
-/security-review examples/sample-vulnerable-service/
-```
+## Step 8: Report completion
 
-This analyzes a deliberately vulnerable Go HTTP service containing:
-- SQL injection in user lookup
-- Authorization bypass in admin endpoints
-- OAuth scope tampering in token exchange
+Once synthesis completes, report:
+- The review ID (SESSION_ID)
+- Total findings by severity from review-report.json
+- Path to review-report.md
 
-Expected output: all 3 bugs flagged with high confidence.
+---
 
-## Extending the Skill
+## Key constraints (MUST follow)
 
-### Add Custom Patterns
-
-Edit or add `.yara` files to `patterns/`:
-
-```bash
-# Create new pattern
-cat > patterns/custom-injection.yara << 'EOF'
-rule sql_injection_custom {
-    meta:
-        description = "Custom SQL injection pattern"
-    strings:
-        $pattern = /sql\.Query\([^)]*\s\+\s/
-    condition:
-        $pattern
-}
-EOF
-```
-
-Then re-run `/security-review` to use new patterns.
-
-### Add Custom Invariant Checkers
-
-Edit `.claude/agents/invariant-checker.md` to add business-logic assertions:
-
-```
-Verify: Payment flows never accept negative amounts
-Verify: Authorization checks happen before data access
-```
-
-## Support & Contributing
-
-- **Issues**: https://github.com/saghaulor/security-reviewers/issues
-- **Contributing**: See `CONTRIBUTING.md` in the repo
-- **Design docs**: See `HAND_OFF.md` for architecture rationale
-
-## License
-
-MIT License — See `LICENSE` file.
+- **Always run all steps in order** — do not skip any step even if intermediate files exist from a prior run. The stale files were deleted in Step 2.
+- **Always generate a fresh SESSION_ID** — never reuse a session ID from a previous run.
+- **Never read old intermediate files** — Step 2 deletes them; there should be nothing to read before the agents create them.
+- **Pass SESSION_ID to every agent** — it is required in all Task inputs (cartographer, all 4 tracers, synthesis).
+- **Parallel tracers** — all four tracer Tasks in Step 6 must be started simultaneously, not sequentially.
