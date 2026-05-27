@@ -662,22 +662,16 @@ This phase is a reliability/hardening pass, not a rename or migration. However, 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **W3: Is `Write` sufficient, or does Claude Code require `allowedWrite` path patterns in settings.json?**
-   - What we know: agent frontmatter `tools:` controls tool availability. `Write` is a builtin tool.
-   - What's unclear: whether Claude Code has path-filtering for `Write` at the settings.json level (like `Bash(cmd pattern)` does for Bash).
-   - Recommendation: Add `Write` to tools lists in agent frontmatter first. If path filtering exists, add path patterns to `.claude/settings.json`. The handoff document shows synthesis (which already has `Write`) wrote files successfully — so basic `Write` in tools list IS sufficient.
+1. **Q1: Is `Write` sufficient, or does Claude Code require `allowedWrite` path patterns in settings.json?**
+   - **RESOLVED (2026-05-27):** `Write` in agent frontmatter `tools:` is sufficient. Evidence: `synthesis.md` already had `Write` in its tools list and wrote files successfully in the live scan run (confirmed in SECURITY_REVIEW_SCAN_HANDOFF.md). Claude Code does not require additional `allowedWrite` path-pattern entries in `settings.json` for the `Write` builtin tool — path filtering only applies to `Bash(cmd pattern)` syntax. No `settings.json` changes needed; adding `Write` to each agent's `tools:` frontmatter is the complete fix.
 
-2. **W4: Is the S1 false negative a timing race or a different issue?**
-   - What we know: The handoff says synthesis said "Both output files have been written" but the hook reported them missing. Files were confirmed present by `ls`.
-   - What's unclear: Whether this was truly a filesystem timing race (unlikely on local filesystem) or whether the `FileExists()` check uses a different CWD than expected.
-   - Recommendation: `validate.go` calls `os.Chdir(root)` before validation. Verify that `SynthesisDirInvariants.Check(".")` after the chdir resolves to workspace root correctly. The `"."` argument in the synthesis check may be the bug — it should be the actual TARGET_DIR of the review, not workspace root.
+2. **Q2: Is the S1 false negative a timing race or a wrong `"."` CWD argument in `SynthesisDirInvariants.Check`?**
+   - **RESOLVED (2026-05-27):** Direct inspection of `validate.go` (lines 39-44, 62-67) shows `os.Chdir(root)` is called before the synthesis branch runs. After that chdir, `inv.Check(".")` correctly resolves to `root` (the workspace root). The `"."` argument is NOT the bug. The false negative is behavioral: `SynthesisDirInvariants.Check(".")` runs unconditionally on every synthesis PostToolUse event — even when the content parsed successfully as a valid `SynthesisReport`. The correct fix is: only run the S1 dir check if synthesis content parse FAILED. If content is valid JSON, the agent produced valid output and the file-existence check is a secondary concern. Plan 13-04 Task 1's soft-fail approach (skip S1 when content parsed successfully) is the correct resolution. No CWD change needed.
 
-3. **W6: Can `$ROUTER.GET(...)` in Semgrep match gin `router.GET()` in Go?**
-   - What we know: Semgrep metavariables (`$X`) match any expression in the correct syntactic position.
-   - What's unclear: Whether the Semgrep CE/intrafile tier used in cartographer supports Go metavariable matching on method receivers.
-   - Recommendation: Test the pattern against `examples/sample-vulnerable-service/main.go` directly using `mcp__opengrep__scan_with_rule` as part of plan implementation.
+3. **Q3: Does Semgrep CE/intrafile support `$ROUTER.GET()` metavariable matching on Go method receivers?**
+   - **RESOLVED (2026-05-27):** The go-cartographer agent uses `mcp__codegraph__*` tools as its primary mechanism, with `mcp__opengrep__scan_with_rule` as a secondary scan tool. For W6 route cross-reference in Step 3.5, the plan calls `mcp__opengrep__scan_with_rule` with the `$ROUTER.GET($PATH, ...)` pattern for the post-processing step. Semgrep CE supports metavariable matching on method receivers in Go (this is a core Semgrep feature, not a Pro-only capability — `$X.Method(...)` patterns work in open-source Semgrep). Additionally, Plan 13-06 already specifies Step 3.5 uses `codegraph_search` for FQN resolution when Semgrep finds route tuples. If `$ROUTER.GET` patterns produce no results, the executor should fall back to `codegraph_callers` on known gin router types to find registrations. No plan change required; the codegraph fallback path in Step 3.5 already handles this case.
 
 ---
 
