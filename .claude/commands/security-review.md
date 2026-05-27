@@ -30,7 +30,7 @@ This unconditionally runs `go build` and copies the result to `.claude/hooks/bin
 
 ## Step 2: Record target, compute code identity, and delete stale files
 
-First, write TARGET_DIR to `.current-review` in the project root so the graphify MCP server wrapper knows which graph to serve:
+First, write TARGET_DIR to `.current-review` in the project root so the codegraph MCP server wrapper knows which graph to serve:
 ```
 Bash: echo "TARGET_DIR" > /home/saghaulor/code/security_reviewer/.current-review
 ```
@@ -75,11 +75,13 @@ Replace TARGET_DIR with the actual resolved path.
 
 Run these two commands with TARGET_DIR as the working directory:
 
-1. `Bash: graphify update TARGET_DIR`
-   - This produces `TARGET_DIR/graphify-out/graph.json`.
-   - If it fails, stop with error.
+1. `Bash: codegraph init TARGET_DIR` (idempotent — safe to re-run if already initialized)
+   - This creates `.codegraph/codegraph.db` inside TARGET_DIR on first run; warns and exits 0 if already initialized.
+2. `Bash: codegraph index TARGET_DIR`
+   - This populates or refreshes `.codegraph/codegraph.db` with the current source index.
+   - If it fails, stop with error. (Running index without prior init on a fresh project exits non-zero.)
 
-2. Run govulncheck via Docker (always — do not rely on a local govulncheck install):
+3. Run govulncheck via Docker (always — do not rely on a local govulncheck install):
    ```
    Bash: docker run --rm -v TARGET_DIR:/workspace -w /workspace golang:latest \
      sh -c "go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck -json ./... > govulncheck.json 2>govulncheck.err"
