@@ -32,7 +32,7 @@ This unconditionally runs `go build` and copies the result to `.claude/hooks/bin
 
 First, write TARGET_DIR to `.current-review` in the project root so the codegraph MCP server wrapper knows which graph to serve:
 ```
-Bash: echo "TARGET_DIR" > /home/saghaulor/code/security_reviewer/.current-review
+Bash: echo "$TARGET_DIR" > /home/saghaulor/code/security_reviewer/.current-review
 ```
 
 Compute the code identity for this review run. First find the repo root and relative path:
@@ -79,7 +79,7 @@ Run these two commands with TARGET_DIR as the working directory:
    - This creates `.codegraph/codegraph.db` inside TARGET_DIR on first run; warns and exits 0 if already initialized.
 2. `Bash: codegraph index TARGET_DIR`
    - This populates or refreshes `.codegraph/codegraph.db` with the current source index.
-   - If it fails, stop with error. (Running index without prior init on a fresh project exits non-zero.)
+   - If it fails, delete `TARGET_DIR/.codegraph/` and re-run both `codegraph init TARGET_DIR` and `codegraph index TARGET_DIR` once before stopping with error. This handles corrupt or version-mismatched databases from prior sessions. (Running index without prior init on a fresh project exits non-zero.)
 
 3. Run govulncheck via Docker (always — do not rely on a local govulncheck install):
    ```
