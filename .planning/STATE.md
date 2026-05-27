@@ -1,7 +1,7 @@
 ---
 project_name: security-reviewer
-milestone: Phase 10 — Hook compatibility + code-ref schema
-milestone_version: 10
+milestone: Phase 11 — codegraph migration
+milestone_version: 11
 completed_phases:
   - phase: 1
     name: Repo scaffold
@@ -33,20 +33,23 @@ completed_phases:
   - phase: 10
     name: Hook compatibility + code-ref schema
     completed_at: 2026-05-26
+  - phase: 11
+    name: codegraph migration
+    completed_at: 2026-05-27
 current_phase: null
-next_phase: null
-total_phases: 10
+next_phase: 12
+total_phases: 12
 paused_at: null
 status: all_phases_complete
 ---
 
 # Project State: security-reviewer
 
-**Phase 10 COMPLETE — All 3 waves executed successfully.** All Wave 0 tests (20 total: B1 x4, B2 x1, E1 x15) passing. Go implementation complete (Plan 10-02). Configuration and documentation updates complete (Plan 10-03). Binary rebuilt. All four blockers (B1–B4) unblocked; code_ref schema integrated end-to-end.
+**Phase 11 COMPLETE — All 2 plans executed successfully.** Wave 1 (MCP transport layer): codegraph-mcp.sh created, graphify-mcp.sh deleted, .mcp.json updated, .gitignore updated. Wave 2 (agent/orchestration migration): go-cartographer.md fully migrated to mcp__codegraph__* tools (12 edits), security-review.md Step 3 updated to codegraph init/index. No mcp__graphify__* references remain in the pipeline. All tests pass.
 
-## Current Phase: 10 — Hook compatibility + code-ref schema
+## Current Phase: 11 — codegraph migration
 
-**Phase status:** ALL PLANS COMPLETE — Wave 0 (RED), Wave 1 (GREEN), Wave 2 (config) executed and verified
+**Phase status:** ALL PLANS COMPLETE — Wave 1 (transport layer), Wave 2 (agent migration) executed and verified
 
 **Plan 01 completed (2026-05-26):** TDD RED phase — 20 failing tests written
 - B1 tests (4): Agent tool extra fields rejection tests (events_test.go)
@@ -105,3 +108,16 @@ status: all_phases_complete
   - code_ref propagation step added to synthesis.md
   - 9 commits: 6 agent def updates + 1 skill update + SUMMARY
 - **PHASE 10 COMPLETED:** All three waves executed; all blockers (B1–B4) unblocked; code_ref schema integrated end-to-end
+- Phase 11 added: codegraph migration — replace graphify with codegraph as the graph/MCP layer (2026-05-27)
+- Phase 11 planned: 2 plans across 2 waves — Wave 1 (script/MCP/gitignore), Wave 2 (agent/orchestration) (2026-05-27)
+- Phase 11 Plan 01 complete: MCP transport layer (2026-05-27)
+  - scripts/codegraph-mcp.sh created (stdio wrapper, reads .current-review, execs codegraph serve --mcp --path)
+  - scripts/graphify-mcp.sh deleted (D-1 hard delete)
+  - .mcp.json graphify key replaced with codegraph key (stdio, absolute path)
+  - examples/sample-vulnerable-service/.gitignore gains .codegraph/ (D-7)
+- Phase 11 Plan 02 complete: Agent/orchestration migration (2026-05-27)
+  - go-cartographer.md: all 12 edits applied — mcp__graphify__* → mcp__codegraph__*, graphify-out refs removed
+  - security-review.md: Step 2 updated, Step 3 codegraph init + index (2-step), govulncheck renumbered
+  - grep -r "mcp__graphify__" .claude/ returns empty — complete removal
+- **PHASE 11 COMPLETED:** Both waves executed; graphify fully replaced by codegraph end-to-end; all tests pass (2026-05-27)
+- Phase 12 added: code review skill evaluation — evaluate two external code review skills for complementary coverage value (2026-05-27)

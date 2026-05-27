@@ -18,7 +18,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: opengrep-mcp server + OpenGrep container** — MCP server with `scan_with_rule`/`scan_directory`/`get_ast`; tier-dispatched containerized scanners
 - [ ] **Phase 5: End-to-end smoke test** — `examples/sample-vulnerable-service/` with 3 planted bugs; full review workflow runs; all 3 bugs flagged non-ambiguously
 - [ ] **Phase 6: Documentation** — Top-level README + per-component READMEs + `CONTRIBUTING.md`
-- [ ] **Phase 11: codegraph migration** — Replace graphify with codegraph as the graph/MCP layer in the security-review pipeline
+- [x] **Phase 11: codegraph migration** — Replace graphify with codegraph as the graph/MCP layer in the security-review pipeline *(completed 2026-05-27)*
+- [ ] **Phase 12: code review skill evaluation** — Evaluate two third-party code review skills against the sample vulnerable service to determine if they add detection coverage or complementary value to the existing security-review pipeline
 
 ## Phase Details
 
@@ -163,10 +164,22 @@ Plans:
 - [ ] 11-01-PLAN.md — Wave 1: Create codegraph-mcp.sh, delete graphify-mcp.sh, update .mcp.json and sample service .gitignore
 - [ ] 11-02-PLAN.md — Wave 2: Update go-cartographer.md (tools + body) and security-review.md (Step 2+3)
 
+### Phase 12: code review skill evaluation
+**Goal**: Determine whether two third-party code review skills — the project-local `/security-review` (this project's own pipeline) and at least one external skill (e.g. the GSD built-in `/code-review` or `/ultrareview`) — detect the three planted bugs in `examples/sample-vulnerable-service/` and whether either adds coverage, speed, or ergonomic value that the custom pipeline does not already provide. The output is a brief decision record (ADR-style) recommending whether to integrate, defer, or discard each evaluated skill.
+**Depends on**: Phase 11
+**Requirements**: (evaluation phase — no new REQ entries)
+**Success Criteria** (what must be TRUE):
+  1. Two code review skills are identified and named in the evaluation plan (one must be an external/third-party skill not authored in this repo).
+  2. Each skill is run against `examples/sample-vulnerable-service/` and its output is captured (findings list, confidence levels, runtime).
+  3. A comparison table exists mapping each skill's findings against the three planted bugs (SQLi, authz bypass, OAuth scope-tampering) and against each other.
+  4. Each evaluated skill receives a verdict: **integrate** (add to pipeline), **complement** (use alongside but separately), or **discard** (no unique value).
+  5. A `docs/skill-eval-2026-05-27.md` decision record is committed summarising methodology, findings table, verdicts, and rationale.
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11. Phases 2/3/4 develop in parallel from Phase 1; the converge point is Phase 5. Phases 7–11 are post-v1 hardening and migration passes.
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 2/3/4 develop in parallel from Phase 1; the converge point is Phase 5. Phases 7–12 are post-v1 hardening, migration, and evaluation passes.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -181,3 +194,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. opengrep-mcp server + infrastructure hardening | 2/2 | ✅ Complete (SC5 pending human verify) | 2026-05-26 |
 | 10. Hook compatibility + code-ref schema | 3/3 | 🟡 Ready to execute | 2026-05-26 |
 | 11. codegraph migration | 0/2 | 📋 Planned | — |
+| 12. code review skill evaluation | — | 📋 Not planned yet | — |
