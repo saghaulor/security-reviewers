@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Documentation** — Top-level README + per-component READMEs + `CONTRIBUTING.md`
 - [x] **Phase 11: codegraph migration** — Replace graphify with codegraph as the graph/MCP layer in the security-review pipeline *(completed 2026-05-27)*
 - [ ] **Phase 12: code review skill evaluation** — Evaluate two third-party code review skills against the sample vulnerable service to determine if they add detection coverage or complementary value to the existing security-review pipeline
+- [ ] **Phase 13: pipeline reliability + bootstrap hardening** — Eliminate all 7 failure modes from the first full scan run; implement pre-flight bootstrap script; reach ≥95% first-attempt success rate for fully autonomous pipeline execution
 
 ## Phase Details
 
@@ -33,7 +34,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `.gitignore` excludes `bin/`, `*.test`, `.idea/`, `.vscode/`, scanner container output dirs (`graphify-out/`, `review-report.json`, etc.).
   4. `LICENSE` file and stub top-level `README.md` (placeholder title + one-paragraph description) are committed.
   5. First commit is on the trunk branch with message matching the HAND_OFF.md §6 convention (`scaffold: initial project structure`).
-**Plans**: TBD
+**Plans**: 6 plans across 2 waves
+
+Plans:
+- [ ] 13-01-PLAN.md — Wave 0: TDD RED — failing tests for W4 (validate.go) + W7 (schema.Handler)
+- [ ] 13-02-PLAN.md — Wave 1a: W1 Bootstrap pre-flight script + Makefile preflight target
+- [ ] 13-03-PLAN.md — Wave 1b: W2+W3 — JSON serialization enforcement + agent Write permissions
+- [ ] 13-04-PLAN.md — Wave 1c: W4+W5+W7 GREEN — validate.go fix + preflight.go schema doc + schema.Handler fields
+- [ ] 13-05-PLAN.md — Wave 1d: W5 — Agent input schema JSON files (6 specs/agents/*.schema.json)
+- [ ] 13-06-PLAN.md — Wave 2: W6+W7 — Cartographer route cross-reference + security-review.md first_param_read
 
 ### Phase 2: claude-security-hooks Go binary
 **Goal**: A static `claude-security-hooks` binary exists at `claude-security-hooks/bin/claude-security-hooks` that implements `preflight`, `validate`, and `inject-context` subcommands and validates every specialist agent's JSON verdict against the 51 per-agent assertion check predicates. The Go unit-test suite for those predicates passes.
@@ -69,7 +78,15 @@ Plans:
   3. `.claude/settings.json` registers three hooks per CON-hook-registration: `PreToolUse` matcher `Task` → `claude-security-hooks preflight` (5s timeout); `PostToolUse` matcher `Task` → `claude-security-hooks validate` (15s timeout); `SubagentStart` matcher `go-taint-tracer|go-authz-tracer|go-oauth-auditor|go-cartographer|invariant-checker|synthesis` → `claude-security-hooks inject-context` (5s timeout). `SubagentStop` is NOT registered (D5).
   4. A `/security-review` slash command definition exists (location and shape per Claude Code slash-command convention) that drives the full review workflow: pre-pass artifacts → cartographer → tracer fan-out → synthesis.
   5. No tracer agent frontmatter contains `Grep`, `Bash`, `Edit`, or `Write` in its `tools:` list (D12 negative check, automatable via grep over the agent files at CI time).
-**Plans**: TBD
+**Plans**: 6 plans across 2 waves
+
+Plans:
+- [ ] 13-01-PLAN.md — Wave 0: TDD RED — failing tests for W4 (validate.go) + W7 (schema.Handler)
+- [ ] 13-02-PLAN.md — Wave 1a: W1 Bootstrap pre-flight script + Makefile preflight target
+- [ ] 13-03-PLAN.md — Wave 1b: W2+W3 — JSON serialization enforcement + agent Write permissions
+- [ ] 13-04-PLAN.md — Wave 1c: W4+W5+W7 GREEN — validate.go fix + preflight.go schema doc + schema.Handler fields
+- [ ] 13-05-PLAN.md — Wave 1d: W5 — Agent input schema JSON files (6 specs/agents/*.schema.json)
+- [ ] 13-06-PLAN.md — Wave 2: W6+W7 — Cartographer route cross-reference + security-review.md first_param_read
 **UI hint**: no (this phase produces config and prompt files only; no end-user UI surface)
 
 ### Phase 4: opengrep-mcp server + OpenGrep container
@@ -83,7 +100,15 @@ Plans:
   3. The OpenGrep Dockerfile in the repo builds successfully against a pinned upstream tag (Q4 resolved); first invocation of `scan_with_rule` with the CE tier pulls and caches the container image locally (REQ-mcp-O4); the container mount inspector (`docker inspect`) shows `/src` mounted with `ro` flag (REQ-mcp-O5).
   4. An integration test that requests `timeout_seconds: 1` against a deliberately slow rule kills the container and returns a partial-results error (REQ-mcp-O6); a separate test confirms server output uses the normalized `internal/schema/findings.go` shape regardless of which engine produced raw findings (REQ-mcp-O7).
   5. Running the server with `SEMGREP_APP_TOKEN=test-secret-do-not-log` in the environment and grepping the server's stdout/stderr output across a full Pro-tier scan invocation produces zero matches for `test-secret-do-not-log` (REQ-mcp-O8).
-**Plans**: TBD
+**Plans**: 6 plans across 2 waves
+
+Plans:
+- [ ] 13-01-PLAN.md — Wave 0: TDD RED — failing tests for W4 (validate.go) + W7 (schema.Handler)
+- [ ] 13-02-PLAN.md — Wave 1a: W1 Bootstrap pre-flight script + Makefile preflight target
+- [ ] 13-03-PLAN.md — Wave 1b: W2+W3 — JSON serialization enforcement + agent Write permissions
+- [ ] 13-04-PLAN.md — Wave 1c: W4+W5+W7 GREEN — validate.go fix + preflight.go schema doc + schema.Handler fields
+- [ ] 13-05-PLAN.md — Wave 1d: W5 — Agent input schema JSON files (6 specs/agents/*.schema.json)
+- [ ] 13-06-PLAN.md — Wave 2: W6+W7 — Cartographer route cross-reference + security-review.md first_param_read
 
 ### Phase 5: End-to-end smoke test
 **Goal**: `examples/sample-vulnerable-service/` exists as a small Go HTTP service containing exactly three planted security bugs — a SQL injection, an authorization bypass, and an OAuth scope-tampering vulnerability — and running the full `/security-review` workflow against it produces a `review-report.json` whose `findings` array contains all three bugs with non-ambiguous verdicts (`exploitable`, not `ambiguous` or `unverifiable`).
@@ -95,7 +120,15 @@ Plans:
   3. Invoking the `/security-review` slash command against `examples/sample-vulnerable-service/` runs to completion: cartographer emits a valid `go-index.json` (Phase 2 hook validates), tracers fan out in parallel (Phase 2 hook validates each verdict), synthesis runs after fan-out (Phase 2 hook validates the report), and no hook returns a `decision:block`.
   4. The resulting `review-report.json` validates against the `review-report/v1` schema and contains exactly three findings whose `(class, file, line)` triples correspond to the three planted bugs (one `class: "injection"` for the SQLi, one `class: "authz"` for the bypass, one `class: "oauth"` for the scope-tampering).
   5. None of the three findings has `confidence: "low"` or a verdict synonym of "ambiguous"/"unverifiable"; each is reported with a concrete data-flow path (for the SQLi and scope-tampering) or a concrete missing-primitive citation (for the authz bypass) per the user's stated success metric.
-**Plans**: TBD
+**Plans**: 6 plans across 2 waves
+
+Plans:
+- [ ] 13-01-PLAN.md — Wave 0: TDD RED — failing tests for W4 (validate.go) + W7 (schema.Handler)
+- [ ] 13-02-PLAN.md — Wave 1a: W1 Bootstrap pre-flight script + Makefile preflight target
+- [ ] 13-03-PLAN.md — Wave 1b: W2+W3 — JSON serialization enforcement + agent Write permissions
+- [ ] 13-04-PLAN.md — Wave 1c: W4+W5+W7 GREEN — validate.go fix + preflight.go schema doc + schema.Handler fields
+- [ ] 13-05-PLAN.md — Wave 1d: W5 — Agent input schema JSON files (6 specs/agents/*.schema.json)
+- [ ] 13-06-PLAN.md — Wave 2: W6+W7 — Cartographer route cross-reference + security-review.md first_param_read
 
 ### Phase 6: Documentation
 **Goal**: A reader landing on the repo can understand what the system does, how to run a security review, how each component fits together, and how to contribute a new agent or extend the source/sink/checklist catalog — without needing to read HAND_OFF.md.
@@ -107,7 +140,15 @@ Plans:
   3. `opengrep-mcp/README.md` documents the three MCP tools, the `tier` parameter semantics, the `SEMGREP_APP_TOKEN` env contract, and how to rebuild the OpenGrep container against a different upstream tag.
   4. `.claude/agents/README.md` (or equivalent) documents the per-agent file structure and the tool-allowlist policy (especially the negative rule that tracer allowlists must not contain `Grep`/`Bash`/`Edit`/`Write`).
   5. `CONTRIBUTING.md` describes how to add a new specialist agent (e.g., for a future stack), how to extend the source/sink catalog in §8.2, and the TDD-with-tests-before-implementation convention.
-**Plans**: TBD
+**Plans**: 6 plans across 2 waves
+
+Plans:
+- [ ] 13-01-PLAN.md — Wave 0: TDD RED — failing tests for W4 (validate.go) + W7 (schema.Handler)
+- [ ] 13-02-PLAN.md — Wave 1a: W1 Bootstrap pre-flight script + Makefile preflight target
+- [ ] 13-03-PLAN.md — Wave 1b: W2+W3 — JSON serialization enforcement + agent Write permissions
+- [ ] 13-04-PLAN.md — Wave 1c: W4+W5+W7 GREEN — validate.go fix + preflight.go schema doc + schema.Handler fields
+- [ ] 13-05-PLAN.md — Wave 1d: W5 — Agent input schema JSON files (6 specs/agents/*.schema.json)
+- [ ] 13-06-PLAN.md — Wave 2: W6+W7 — Cartographer route cross-reference + security-review.md first_param_read
 
 ### Phase 9: opengrep-mcp server + infrastructure hardening
 **Goal**: Integrate the standalone `opengrep-mcp` binary into the security-review pipeline. The standalone binary already exists at `/home/saghaulor/code/opengrep-mcp` (Phase 5 complete, tested). Work in this repo is integration-only: top-level Makefile with build/verify targets, `.mcp.json` switched from SSE to stdio, and orchestration command Step 3 (Docker bootstrap) removed.
@@ -176,10 +217,34 @@ Plans:
   5. A `docs/skill-eval-2026-05-27.md` decision record is committed summarising methodology, findings table, verdicts, and rationale.
 **Plans**: TBD
 
+### Phase 13: pipeline reliability + bootstrap hardening
+**Goal**: Eliminate all 7 failure modes documented in `SECURITY_REVIEW_SCAN_HANDOFF.md` and all missing pre-flight checks documented in `BOOTSTRAP_REQUIREMENTS.md`. The pipeline reaches ≥95% first-attempt success rate for fully autonomous execution — no manual JSON reformatting, no manual file writes, no false-negative hook blocks.
+**Depends on**: Phase 12
+**Source documents**: `BOOTSTRAP_REQUIREMENTS.md`, `SECURITY_REVIEW_SCAN_HANDOFF.md`
+**Success Criteria** (what must be TRUE):
+  1. `bootstrap/pre-flight-checks.sh` exits 0 on a correct environment and non-zero with actionable remediation messages when any required tool (codegraph, make, go, git, docker) is missing or misconfigured; a `make preflight` target invokes it.
+  2. All 9 tracer agents (1 authz + 1 oauth + 1 invariant + 6 taint) succeed on first attempt against `examples/sample-vulnerable-service` with no manual prompt reformatting — JSON serialization issue (Handoff Issue 3) is eliminated.
+  3. All verdict files (`authz-findings.json`, `oauth-checklist.json`, `invariant-results.json`, `taint-verdict-*.json`, `review-report.json`, `review-report.md`) are written autonomously by agents with no orchestrator Write calls required — agent write permission model (Handoff Issue 4) is resolved.
+  4. Post-tool-use validation hooks report 0 false negatives: hooks fire only after all verdict files are present, and error messages include file path, first 100 chars of actual content, and line number of parse failure (Handoff Issue 5).
+  5. `go-cartographer.md` post-processing step cross-references all `router.{GET,POST,DELETE,PATCH,PUT}()` calls from `main.go` against detected entrypoints and emits a `warnings` array in `go-index.json` for any gaps — `callChainSQLiHandler` route (Handoff Issue 1) would be caught.
+  6. Agent input schemas are documented as `claude-security-hooks/specs/agents/<agent>.schema.json` for all 5 specialist agent types; a schema validation step rejects unknown fields at dispatch with the expected schema in the error message (Handoff Issue 2).
+  7. `go-index.json` entrypoints include `first_param_read_line` and `first_param_read_expr` fields so orchestrators use precise source locations rather than function definition lines (Handoff Issue 6).
+**Plans**: 6 plans across 2 waves
+
+Plans:
+- [ ] 13-01-PLAN.md — Wave 0: TDD RED — failing tests for W4 (validate.go) + W7 (schema.Handler)
+- [ ] 13-02-PLAN.md — Wave 1a: W1 Bootstrap pre-flight script + Makefile preflight target
+- [ ] 13-03-PLAN.md — Wave 1b: W2+W3 — JSON serialization enforcement + agent Write permissions
+- [ ] 13-04-PLAN.md — Wave 1c: W4+W5+W7 GREEN — validate.go fix + preflight.go schema doc + schema.Handler fields
+- [ ] 13-05-PLAN.md — Wave 1d: W5 — Agent input schema JSON files (6 specs/agents/*.schema.json)
+- [ ] 13-06-PLAN.md — Wave 2: W6+W7 — Cartographer route cross-reference + security-review.md first_param_read
+
+---
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 2/3/4 develop in parallel from Phase 1; the converge point is Phase 5. Phases 7–12 are post-v1 hardening, migration, and evaluation passes.
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13. Phases 2/3/4 develop in parallel from Phase 1; the converge point is Phase 5. Phases 7–13 are post-v1 hardening, migration, evaluation, and reliability passes.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -192,6 +257,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Extended test cases | — | ✅ Complete | 2026-05-24 |
 | 8. Automated E2E Testing | — | ✅ Complete | 2026-05-25 |
 | 9. opengrep-mcp server + infrastructure hardening | 2/2 | ✅ Complete (SC5 pending human verify) | 2026-05-26 |
-| 10. Hook compatibility + code-ref schema | 3/3 | 🟡 Ready to execute | 2026-05-26 |
-| 11. codegraph migration | 0/2 | 📋 Planned | — |
+| 10. Hook compatibility + code-ref schema | 3/3 | ✅ Complete | 2026-05-26 |
+| 11. codegraph migration | 2/2 | ✅ Complete | 2026-05-27 |
 | 12. code review skill evaluation | — | 📋 Not planned yet | — |
+| 13. pipeline reliability + bootstrap hardening | — | 📋 Not planned yet | — |
