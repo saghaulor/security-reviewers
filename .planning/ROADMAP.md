@@ -18,6 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: opengrep-mcp server + OpenGrep container** — MCP server with `scan_with_rule`/`scan_directory`/`get_ast`; tier-dispatched containerized scanners
 - [ ] **Phase 5: End-to-end smoke test** — `examples/sample-vulnerable-service/` with 3 planted bugs; full review workflow runs; all 3 bugs flagged non-ambiguously
 - [ ] **Phase 6: Documentation** — Top-level README + per-component READMEs + `CONTRIBUTING.md`
+- [ ] **Phase 11: codegraph migration** — Replace graphify with codegraph as the graph/MCP layer in the security-review pipeline
 
 ## Phase Details
 
@@ -123,10 +124,49 @@ Plans:
 - [x] 09-01-PLAN.md — Wave 1: TDD verify target (RED) + remove Step 3 from orchestration command
 - [x] 09-02-PLAN.md — Wave 2: build-opengrep-mcp implementation (GREEN) + .mcp.json stdio wiring
 
+### Phase 10: Hook compatibility + code-ref schema
+**Goal**: Unblock the Phase 5 smoke test by resolving four runtime blockers discovered during the first live `/security-review` run, and add a `code_ref` field to all review artifacts so they can be correlated to the exact code version they analyzed.
+**Depends on**: Phase 9
+**Blockers addressed**: B1 (Agent tool extra fields rejected by hooks), B2 (T6 blocks honest `ambiguous` verdicts), B3 (taint tracer writes absolute paths that fail T9), B4 (stale hooks binary not rebuilt before reviews)
+**Schema enhancement**: E1 — `code_ref` + `code_ref_dirty` on `CartographerIndex` and `SynthesisReport`
+**Success Criteria** (what must be TRUE):
+  1. `go test ./...` passes in `claude-security-hooks/` including all new Wave 0 tests (B1, B2, E1).
+  2. An Agent call with `run_in_background: true` or `model: "sonnet"` is NOT blocked by the preflight hook.
+  3. A `TaintVerdict` with `verdict="ambiguous"`, `semgrep.ran=false`, `gopls.references_calls=0` passes T6.
+  4. `CartographerIndex` and `SynthesisReport` schema structs contain `code_ref` and `code_ref_dirty` fields and round-trip correctly.
+  5. `go-taint-tracer.md` §6 Hard Rules contains an explicit workspace-relative path requirement (T9-PATH).
+  6. `security-review.md` contains a binary freshness step (Step 1.5) that runs `make install` before any agent dispatch.
+  7. `go-cartographer.md` instructs code_ref computation; `synthesis.md` instructs propagation into `review-report.json`.
+  8. A full `/security-review examples/sample-vulnerable-service` run completes without any hook-driven block on B1–B4.
+**Plans**: 3 plans across 3 waves
+
+Plans:
+- [x] 10-01-PLAN.md — Wave 0: Failing tests (RED) — events_test, taint_tracer_test, schema round-trip
+- [x] 10-02-PLAN.md — Wave 1: Go implementation (GREEN) — TaskToolInput, checkT6, schema fields, binary rebuild
+- [x] 10-03-PLAN.md — Wave 2: Agent defs + skill — T9-PATH rule, cartographer code_ref, synthesis propagation, freshness check
+
+### Phase 11: codegraph migration
+**Goal**: Replace graphify with codegraph as the graph/MCP layer in the security-review pipeline. graphify requires an LLM API key and the `anthropic` pip package, which breaks on Bedrock and adds external dependencies. codegraph is fully local (no API key), has richer security-analysis primitives (`codegraph_trace`, `codegraph_callers`, native route node kind), and is already pulled at `/home/saghaulor/code/codegraph`.
+**Depends on**: Phase 10
+**Requirements**: (migration — no new REQ entries; replaces graphify integration points end-to-end)
+**Success Criteria** (what must be TRUE):
+  1. `scripts/graphify-mcp.sh` is deleted or replaced with an equivalent `scripts/codegraph-mcp.sh` that runs `codegraph serve --mcp --path TARGET_DIR`.
+  2. `.mcp.json` graphify entry is replaced with a codegraph entry using the stdio transport and `mcp__codegraph__*` tool prefix; no `mcp__graphify__*` references remain.
+  3. `go-cartographer.md` tools list is updated: `mcp__graphify__*` tools replaced with `mcp__codegraph__*` equivalents; prompt body updated to use `codegraph_trace` and `codegraph_callers` where applicable.
+  4. `security-review.md` Step 3 updated from `graphify build` to `codegraph index` (or equivalent); no graphify invocation remains in the orchestration command.
+  5. `go-taint-tracer.md` optionally updated to reference `codegraph_trace` for data-flow confirmation.
+  6. `.gitignore` of `examples/sample-vulnerable-service/` excludes `.codegraph/` (the output directory codegraph writes into the target project).
+  7. A full `/security-review examples/sample-vulnerable-service` run completes with codegraph as the graph source; `review-report.json` still contains findings with non-ambiguous verdicts.
+**Plans**: 2 plans across 2 waves
+
+Plans:
+- [ ] 11-01-PLAN.md — Wave 1: Create codegraph-mcp.sh, delete graphify-mcp.sh, update .mcp.json and sample service .gitignore
+- [ ] 11-02-PLAN.md — Wave 2: Update go-cartographer.md (tools + body) and security-review.md (Step 2+3)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9. Phases 2/3/4 develop in parallel from Phase 1; the converge point is Phase 5. Phases 7–9 are post-v1 hardening passes.
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11. Phases 2/3/4 develop in parallel from Phase 1; the converge point is Phase 5. Phases 7–11 are post-v1 hardening and migration passes.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -139,3 +179,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Extended test cases | — | ✅ Complete | 2026-05-24 |
 | 8. Automated E2E Testing | — | ✅ Complete | 2026-05-25 |
 | 9. opengrep-mcp server + infrastructure hardening | 2/2 | ✅ Complete (SC5 pending human verify) | 2026-05-26 |
+| 10. Hook compatibility + code-ref schema | 3/3 | 🟡 Ready to execute | 2026-05-26 |
+| 11. codegraph migration | 0/2 | 📋 Planned | — |
