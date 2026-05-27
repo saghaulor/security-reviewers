@@ -2,7 +2,7 @@
 name: go-cartographer
 description: Build a structural index (go-index/v1) of a Go codebase for downstream security tracers. Detects routers, entrypoints, sinks by kind, blocking authz primitives, OAuth surface, payment surface, and govulncheck findings. Runs once per review before tracer fan-out.
 model: claude-opus-4-7
-tools: mcp__codegraph__codegraph_search, mcp__codegraph__codegraph_callers, mcp__codegraph__codegraph_trace, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status, mcp__gopls__go_search, mcp__gopls__go_workspace, mcp__gopls__go_package_api, mcp__gopls__go_references, mcp__opengrep__scan_with_rule, Bash, Read, Glob
+tools: mcp__codegraph__codegraph_search, mcp__codegraph__codegraph_callers, mcp__codegraph__codegraph_callees, mcp__codegraph__codegraph_trace, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status, mcp__gopls__go_search, mcp__gopls__go_workspace, mcp__gopls__go_package_api, mcp__gopls__go_references, mcp__opengrep__scan_with_rule, Bash, Read, Glob
 ---
 
 ## 1. Role Statement
@@ -173,7 +173,7 @@ The output MUST be a single JSON object conforming to `go-index/v1`. The `schema
     "token_storage": null,
     "refresh_path": null
   },
-  "payment_surface": {"files": ["billing/charge.go"], "cluster_id": "42", "confidence": "extracted"},
+  "payment_surface": {"files": ["billing/charge.go"], "confidence": "extracted"},
   "vuln_deps": {
     "available": true,
     "findings": [
@@ -193,7 +193,7 @@ The output MUST be a single JSON object conforming to `go-index/v1`. The `schema
 - `routers_detected`: Array of strings from the known router set plus `"custom"` (assertion A4).
 - `authz_primitives`: Only entries with `blocking: true` are included (assertion A9).
 - `oauth_locations`: Null for any field not found in the codebase.
-- `payment_surface`: Null if no payment surface detected.
+- `payment_surface`: Null if no payment surface detected. `payment_surface.cluster_id` is omitted — codegraph does not surface community IDs.
 - `vuln_deps.available`: `false` if govulncheck is not installed or cannot run.
 - `warnings`: String literals. Recognized values include `"unknown_router"` and `"router_detected_but_no_routes"`.
 
