@@ -11,6 +11,8 @@ import (
 
 const stdinCapBytes = 1 << 20 // 1 MB
 
+// Note: envelope parsing uses json.Unmarshal (lenient). See validate.go for rationale.
+
 func Preflight(stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	limited := io.LimitReader(stdin, stdinCapBytes+1)
 	body, err := io.ReadAll(limited)
@@ -21,9 +23,7 @@ func Preflight(stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("preflight: input exceeds %d bytes", stdinCapBytes)
 	}
 	var ev PreToolUseEvent
-	dec := json.NewDecoder(strings.NewReader(string(body)))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&ev); err != nil {
+	if err := json.Unmarshal(body, &ev); err != nil {
 		return EmitBlock(stdout, fmt.Sprintf("H7: PreToolUseEvent parse: %v", err))
 	}
 	if !IsSecurityAgent(ev.ToolInput.SubagentType) {

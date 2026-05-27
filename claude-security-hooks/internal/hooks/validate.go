@@ -11,6 +11,11 @@ import (
 	"github.com/saghaulor/claude-security-hooks/internal/invariants"
 )
 
+// Note: envelope parsing uses json.Unmarshal (lenient) rather than a strict decoder.
+// The hook's job is to validate agent output schema, not the harness event envelope.
+// The harness adds new envelope fields regularly (status, prompt, run_in_background, etc.);
+// DisallowUnknownFields on the envelope causes recurring H7 breakage.
+
 func Validate(stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	limited := io.LimitReader(stdin, stdinCapBytes+1)
 	body, err := io.ReadAll(limited)
@@ -21,9 +26,7 @@ func Validate(stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("validate: input exceeds %d bytes", stdinCapBytes)
 	}
 	var ev PostToolUseEvent
-	dec := json.NewDecoder(strings.NewReader(string(body)))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&ev); err != nil {
+	if err := json.Unmarshal(body, &ev); err != nil {
 		return EmitBlock(stdout, fmt.Sprintf("H7: PostToolUseEvent parse: %v", err))
 	}
 	if !IsSecurityAgent(ev.ToolInput.SubagentType) {

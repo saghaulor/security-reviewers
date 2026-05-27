@@ -35,10 +35,12 @@ type PreToolUseEvent struct {
 
 // ToolResponse — content is string OR array per live docs; RawMessage handles both.
 // Status field added: Claude Code runtime now includes tool_response.status (e.g. "success", "error").
+// Prompt field added: Claude Code runtime echoes the original agent prompt in tool_response (H7 fix round 4).
 type ToolResponse struct {
 	Content json.RawMessage `json:"content"`
 	Type    string          `json:"type,omitempty"`
 	Status  string          `json:"status,omitempty"`
+	Prompt  string          `json:"prompt,omitempty"`
 }
 
 // PostToolUseEvent adds tool_response.

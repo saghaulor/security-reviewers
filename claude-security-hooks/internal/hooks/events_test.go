@@ -343,6 +343,40 @@ func TestPreToolUseEvent_ModelFieldAccepted(t *testing.T) {
 	}
 }
 
+// TestPostToolUseEvent_ToolResponseWithPrompt documents that the Claude Code harness echoes
+// the original "prompt" inside tool_response for Agent tool calls (H7 fix round 4).
+// Uses DisallowUnknownFields as a schema documentation check — not the production parse path.
+func TestPostToolUseEvent_ToolResponseWithPrompt(t *testing.T) {
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Agent",
+		"tool_input": {"subagent_type": "go-cartographer", "prompt": "do the scan", "description": "Cartograph"},
+		"tool_use_id": "123",
+		"tool_response": {
+			"content": "precondition_failed",
+			"status": "error",
+			"prompt": "do the scan"
+		},
+		"prompt": "do the scan"
+	}`
+
+	var event hooks.PostToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		t.Fatalf("Decode failed with tool_response.prompt present (H7 round-4 regression): %v", err)
+	}
+	if event.ToolResponse.Prompt != "do the scan" {
+		t.Errorf("ToolResponse.Prompt = %q, want 'do the scan'", event.ToolResponse.Prompt)
+	}
+	if event.ToolResponse.Status != "error" {
+		t.Errorf("ToolResponse.Status = %q, want 'error'", event.ToolResponse.Status)
+	}
+}
+
 // TestPreToolUseEvent_IsolationFieldAccepted verifies that the isolation field in tool_input
 // is now accepted and properly decoded (Wave 1: B1 GREEN).
 func TestPreToolUseEvent_IsolationFieldAccepted(t *testing.T) {

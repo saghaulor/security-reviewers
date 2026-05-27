@@ -57,8 +57,11 @@ func TestInject_MalformedJSON_Block(t *testing.T) {
 	}
 }
 
-func TestInject_AgentNameRejected_Block(t *testing.T) {
-	// D-15 fold-in: agent_name (HAND_OFF stale) must be rejected as an unknown field
+func TestInject_AgentNameSilentlyIgnored(t *testing.T) {
+	// D-15: agent_name (HAND_OFF stale) should be ignored — not blocked.
+	// InjectContext uses lenient json.Unmarshal so new/renamed harness fields never H7-block.
+	// When InjectContext gains real logic it should validate ev.AgentType != "" explicitly
+	// instead of relying on DisallowUnknownFields to reject the old name.
 	body := []byte(`{"session_id":"s1","transcript_path":"t1","cwd":"/tmp","hook_event_name":"SubagentStart","agent_name":"go-taint-tracer","agent_id":"a1","prompt":"test"}`)
 	stdin := bytes.NewReader(body)
 	stdout := bytes.NewBuffer(nil)
@@ -68,17 +71,9 @@ func TestInject_AgentNameRejected_Block(t *testing.T) {
 	if err != nil {
 		t.Errorf("InjectContext returned error: %v", err)
 	}
-	if stdout.Len() == 0 {
-		t.Fatal("expected stdout block for unknown field (agent_name)")
-	}
-	var result struct {
-		Decision string `json:"decision"`
-	}
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		t.Fatalf("stdout is not valid JSON: %v", err)
-	}
-	if result.Decision != "block" {
-		t.Errorf("expected decision=block, got %q", result.Decision)
+	// No block expected — lenient parse silently ignores agent_name.
+	if bytes.Contains(stdout.Bytes(), []byte("H7")) {
+		t.Errorf("unexpected H7 block on agent_name field: %s", stdout.String())
 	}
 }
 

@@ -3,6 +3,7 @@ package hooks
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -117,9 +118,28 @@ func TestPreflight_MalformedEvent_Block(t *testing.T) {
 	}
 }
 
-func TestPreflight_UnknownFieldInEvent_Block(t *testing.T) {
-	body := []byte(`{"session_id":"s1","transcript_path":"t1","cwd":"/tmp","hook_event_name":"PreToolUse","tool_name":"Task","tool_input":{"subagent_type":"general-purpose","prompt":"p"},"tool_use_id":"u1","bogus_field":"x"}`)
-	stdin := bytes.NewReader(body)
+// TestPreflight_H7_Regression_ExtraEnvelopeFields verifies that new harness-added fields
+// at any nesting level of PreToolUseEvent do NOT cause an H7 block. This is the
+// preflight-side partner to the validate regression tests.
+func TestPreflight_H7_Regression_ExtraEnvelopeFields(t *testing.T) {
+	// Raw JSON simulating a future harness PreToolUse event with unknown fields.
+	// Preflight must tolerate them for non-security agents.
+	rawEvent := `{
+		"session_id": "s1",
+		"transcript_path": "/p",
+		"cwd": "/tmp",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "general-purpose",
+			"prompt": "x",
+			"unmodelled_future_field": true
+		},
+		"tool_use_id": "u1",
+		"prompt": "x",
+		"new_top_level_field": "some harness value"
+	}`
+	stdin := strings.NewReader(rawEvent)
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)
 
@@ -127,17 +147,8 @@ func TestPreflight_UnknownFieldInEvent_Block(t *testing.T) {
 	if err != nil {
 		t.Errorf("Preflight returned error: %v", err)
 	}
-	if stdout.Len() == 0 {
-		t.Fatal("expected stdout block for unknown field")
-	}
-	var result struct {
-		Decision string `json:"decision"`
-	}
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		t.Fatalf("stdout is not valid JSON: %v", err)
-	}
-	if result.Decision != "block" {
-		t.Errorf("expected decision=block, got %q", result.Decision)
+	if bytes.Contains(stdout.Bytes(), []byte("H7")) {
+		t.Errorf("H7 block on extra envelope fields (regression): %s", stdout.String())
 	}
 }
 

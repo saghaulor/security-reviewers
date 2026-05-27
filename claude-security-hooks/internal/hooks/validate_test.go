@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -453,5 +454,86 @@ func TestValidate_PostToolUseEventWithStatus_NoH7Block(t *testing.T) {
 	// Should not contain H7 parse error
 	if bytes.Contains(stdout.Bytes(), []byte("H7")) {
 		t.Errorf("expected no H7 block, got: %s", stdout.String())
+	}
+}
+
+// TestValidate_H7_Regression_ToolResponsePrompt is the direct regression test for the
+// recurring H7 "unknown field prompt" bug (round 4). The harness echoes the original
+// prompt inside tool_response; Validate() must not H7-block on it.
+// Uses raw JSON — not json.Marshal — to replicate the actual harness event shape.
+func TestValidate_H7_Regression_ToolResponsePrompt(t *testing.T) {
+	tmpdir := setupWorkspaceTemp(t)
+	prev, _ := os.Getwd()
+	os.Chdir(tmpdir)
+	defer os.Chdir(prev)
+
+	rawEvent := `{
+		"session_id": "s1",
+		"transcript_path": "/p",
+		"cwd": "` + tmpdir + `",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Task",
+		"tool_input": {"subagent_type": "general-purpose", "prompt": "x"},
+		"tool_use_id": "u1",
+		"tool_response": {
+			"content": "ok",
+			"status": "success",
+			"prompt": "x"
+		}
+	}`
+	stdin := strings.NewReader(rawEvent)
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+
+	err := Validate(stdin, stdout, stderr)
+	if err != nil {
+		t.Errorf("Validate returned error: %v", err)
+	}
+	if bytes.Contains(stdout.Bytes(), []byte("H7")) {
+		t.Errorf("H7 block on tool_response.prompt (regression): %s", stdout.String())
+	}
+}
+
+// TestValidate_H7_Regression_FutureEnvelopeFields verifies that any new harness field
+// at any nesting level never causes an H7 parse block. This guards against round 5+
+// of the recurring "unknown field" problem.
+func TestValidate_H7_Regression_FutureEnvelopeFields(t *testing.T) {
+	tmpdir := setupWorkspaceTemp(t)
+	prev, _ := os.Getwd()
+	os.Chdir(tmpdir)
+	defer os.Chdir(prev)
+
+	// Simulate a future harness event with completely novel fields at multiple levels.
+	rawEvent := `{
+		"session_id": "s1",
+		"transcript_path": "/p",
+		"cwd": "` + tmpdir + `",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "general-purpose",
+			"prompt": "x",
+			"not_yet_modelled_input_field": true
+		},
+		"tool_use_id": "u1",
+		"tool_response": {
+			"content": "ok",
+			"status": "success",
+			"prompt": "x",
+			"new_field_v42": "some future value"
+		},
+		"some_new_top_level_field": "value",
+		"another_new_field": 99
+	}`
+	stdin := strings.NewReader(rawEvent)
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+
+	err := Validate(stdin, stdout, stderr)
+	if err != nil {
+		t.Errorf("Validate returned error: %v", err)
+	}
+	if bytes.Contains(stdout.Bytes(), []byte("H7")) {
+		t.Errorf("H7 block on future envelope fields (regression): %s", stdout.String())
 	}
 }
