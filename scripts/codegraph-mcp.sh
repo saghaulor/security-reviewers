@@ -13,9 +13,18 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 TARGET_FILE="$PROJECT_ROOT/.current-review"
 
 if [ -f "$TARGET_FILE" ]; then
-  TARGET_DIR="$(cat "$TARGET_FILE")"
+  TARGET_DIR="$(tr -d '\n' < "$TARGET_FILE")"
 else
   TARGET_DIR="$PROJECT_ROOT/examples/sample-vulnerable-service"
+fi
+
+if [ -z "$TARGET_DIR" ]; then
+  echo "codegraph-mcp.sh: TARGET_DIR is empty after reading $TARGET_FILE" >&2
+  exit 1
+fi
+if [ ! -d "$TARGET_DIR" ]; then
+  echo "codegraph-mcp.sh: TARGET_DIR '$TARGET_DIR' is not a directory" >&2
+  exit 1
 fi
 
 exec codegraph serve --mcp --path "$TARGET_DIR"
