@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# graphify-mcp.sh — Stdio MCP wrapper for graphify.
+# codegraph-mcp.sh — Stdio MCP wrapper for codegraph.
 #
 # The target directory is read from .current-review (written by the
 # /security-review orchestration command at Step 2). This lets the
-# graphify MCP server stay pointed at the currently-reviewed service
+# codegraph MCP server stays pointed at the currently-reviewed service
 # without requiring a session restart.
 #
 # Falls back to examples/sample-vulnerable-service if the file is absent.
@@ -18,4 +18,4 @@ else
   TARGET_DIR="$PROJECT_ROOT/examples/sample-vulnerable-service"
 fi
 
-exec graphify "$TARGET_DIR" --mcp
+exec codegraph serve --mcp --path "$TARGET_DIR"

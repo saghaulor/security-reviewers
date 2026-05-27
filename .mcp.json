@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "graphify": {
+    "codegraph": {
       "type": "stdio",
-      "command": "/home/saghaulor/code/security_reviewer/scripts/graphify-mcp.sh"
+      "command": "/home/saghaulor/code/security_reviewer/scripts/codegraph-mcp.sh"
     },
     "opengrep": {
       "type": "stdio",
