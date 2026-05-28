@@ -229,15 +229,15 @@ Plans:
   5. `go-cartographer.md` post-processing step cross-references all `router.{GET,POST,DELETE,PATCH,PUT}()` calls from `main.go` against detected entrypoints and emits a `warnings` array in `go-index.json` for any gaps — `callChainSQLiHandler` route (Handoff Issue 1) would be caught.
   6. Agent input schemas are documented as `claude-security-hooks/specs/agents/<agent>.schema.json` for all 5 specialist agent types; a schema validation step rejects unknown fields at dispatch with the expected schema in the error message (Handoff Issue 2).
   7. `go-index.json` entrypoints include `first_param_read_line` and `first_param_read_expr` fields so orchestrators use precise source locations rather than function definition lines (Handoff Issue 6).
-**Plans**: 6 plans across 2 waves
+**Plans**: 6 plans across 4 waves
 
 Plans:
-- [ ] 13-01-PLAN.md — Wave 0: TDD RED — failing tests for W4 (validate.go) + W7 (schema.Handler)
-- [ ] 13-02-PLAN.md — Wave 1a: W1 Bootstrap pre-flight script + Makefile preflight target
-- [ ] 13-03-PLAN.md — Wave 1b: W2+W3 — JSON serialization enforcement + agent Write permissions
-- [ ] 13-04-PLAN.md — Wave 1c: W4+W5+W7 GREEN — validate.go fix + preflight.go schema doc + schema.Handler fields
-- [ ] 13-05-PLAN.md — Wave 1d: W5 — Agent input schema JSON files (6 specs/agents/*.schema.json)
-- [ ] 13-06-PLAN.md — Wave 2: W6+W7 — Cartographer route cross-reference + security-review.md first_param_read
+- [ ] 13-01-PLAN.md — Wave 0: TDD RED — failing tests for W4 (validate.go) + W5 (preflight.go) + W7 (schema.Handler)
+- [ ] 13-02-PLAN.md — Wave 1a: W1 Bootstrap pre-flight script + Makefile preflight target (parallel)
+- [ ] 13-03-PLAN.md — Wave 1b: W2+W3 — JSON serialization enforcement + agent Write permissions (parallel)
+- [ ] 13-04-PLAN.md — Wave 1c: W4+W5+W7 GREEN — validate.go fix + preflight.go schema doc + schema.Handler fields (depends on 13-01)
+- [x] 13-05-PLAN.md — Wave 2: W5 — Agent input schema JSON files (6 specs/agents/*.schema.json; depends on 13-04)
+- [x] 13-06-PLAN.md — Wave 3: W6+W7 — Cartographer route cross-reference + security-review.md first_param_read (depends on 13-03, 13-04, 13-05)
 
 ---
 
@@ -260,4 +260,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 10. Hook compatibility + code-ref schema | 3/3 | ✅ Complete | 2026-05-26 |
 | 11. codegraph migration | 2/2 | ✅ Complete | 2026-05-27 |
 | 12. code review skill evaluation | — | 📋 Not planned yet | — |
-| 13. pipeline reliability + bootstrap hardening | — | 📋 Not planned yet | — |
+| 13. pipeline reliability + bootstrap hardening | 6/6 | ✅ Complete | 2026-05-28 |
