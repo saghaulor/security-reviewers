@@ -13,7 +13,7 @@ dist/
 
 # Dependency management
 vendor/
-go.sum
+# go.sum is committed for reproducible, verifiable builds — do NOT ignore it.
 
 # IDE
 .vscode/

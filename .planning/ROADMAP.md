@@ -30,6 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Requirements**: (none — pre-implementation support phase)
 **Success Criteria** (what must be TRUE):
   1. Two Go modules exist: `claude-security-hooks/go.mod` and `opengrep-mcp/go.mod`, each with a working `cmd/<name>/main.go` that builds with `CGO_ENABLED=0 go build` and exits 0 when run with no args.
+     > **Update (2026-05-28):** The `opengrep-mcp` module was later extracted to a standalone sibling repo (`../opengrep-mcp`, module `github.com/security_reviewer/opengrep-mcp`) and is built into `.claude/hooks/bin/opengrep-mcp` via the Makefile `build-opengrep-mcp` target. Its placeholder stub in this repo was removed (commit `c66fbfb`); only `claude-security-hooks/go.mod` remains here.
   2. `.claude/agents/` and `.claude/hooks/bin/` and `.claude/security-invariants/` directories exist (may be empty placeholders with `.gitkeep`).
   3. `.gitignore` excludes `bin/`, `*.test`, `.idea/`, `.vscode/`, scanner container output dirs (`graphify-out/`, `review-report.json`, etc.).
   4. `LICENSE` file and stub top-level `README.md` (placeholder title + one-paragraph description) are committed.
