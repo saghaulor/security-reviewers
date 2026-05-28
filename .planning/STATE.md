@@ -36,14 +36,22 @@ completed_phases:
   - phase: 11
     name: codegraph migration
     completed_at: 2026-05-27
-current_phase: null
-next_phase: 12
-total_phases: 12
+current_phase: 13
+next_phase: null
+total_phases: 13
 paused_at: null
-status: all_phases_complete
+status: in_progress
 ---
 
 # Project State: security-reviewer
+
+**Phase 13 IN PROGRESS — Wave 0 + Wave 1 complete (4/6 plans done). Wave 2 (13-05) and Wave 3 (13-06) remain.**
+
+Wave 0 (13-01 TDD RED): COMPLETE — 3 test files, 8 new failing tests for W4/W5/W7
+Wave 1a (13-02 bootstrap): COMPLETE — bootstrap/pre-flight-checks.sh + make preflight target + .codegraph/ gitignore
+Wave 1b (13-03 W2+W3): COMPLETE — JSON enforcement at Steps 4+6; Write added to 5 agents; A10-amended rules
+Wave 1c (13-04 TDD GREEN): COMPLETE — validate.go S1 soft-fail, dispatch.go content preview, preflight.go schema doc, Handler fields
+Remaining: Wave 2 (13-05 schema files) → Wave 3 (13-06 cartographer routes + first_param_read)
 
 **Phase 11 COMPLETE — All 2 plans executed successfully.** Wave 1 (MCP transport layer): codegraph-mcp.sh created, graphify-mcp.sh deleted, .mcp.json updated, .gitignore updated. Wave 2 (agent/orchestration migration): go-cartographer.md fully migrated to mcp__codegraph__* tools (12 edits), security-review.md Step 3 updated to codegraph init/index. No mcp__graphify__* references remain in the pipeline. All tests pass.
 
@@ -121,3 +129,4 @@ status: all_phases_complete
   - grep -r "mcp__graphify__" .claude/ returns empty — complete removal
 - **PHASE 11 COMPLETED:** Both waves executed; graphify fully replaced by codegraph end-to-end; all tests pass (2026-05-27)
 - Phase 12 added: code review skill evaluation — evaluate two external code review skills for complementary coverage value (2026-05-27)
+- Phase 13 added: pipeline reliability + bootstrap hardening — 7 failure modes from first scan run + bootstrap pre-flight gap addressed (2026-05-27)
