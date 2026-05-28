@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "synthesis agent input",
+  "description": "working_directory is the directory containing all specialist verdict files. review_id is the UUID from Step 1 of security-review.md.",
+  "type": "object",
+  "required": ["working_directory", "review_id"],
+  "additionalProperties": false,
+  "properties": {
+    "working_directory": {
+      "type": "string",
+      "description": "Absolute path to the directory containing all specialist agent verdict JSON files (go-index.json, authz-findings.json, oauth-checklist.json, invariant-results.json, taint-verdict-*.json). The synthesis agent reads from this directory per D18."
+    },
+    "review_id": {
+      "type": "string",
+      "description": "UUID identifying the current security review session. This is the review_session_id from Step 1 of security-review.md. The synthesis agent uses it to populate review_id in the review-report/v1 output."
+    }
+  }
+}

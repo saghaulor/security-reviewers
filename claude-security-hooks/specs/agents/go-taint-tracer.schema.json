@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "go-taint-tracer agent input",
+  "type": "object",
+  "required": ["source", "sink"],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "type": "object",
+      "description": "Taint source endpoint — the location where untrusted data enters the flow.",
+      "required": ["file", "line", "expr", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Workspace-relative path to the source file (e.g. internal/handlers/auth.go). Must NOT be absolute."
+        },
+        "line": {
+          "type": "integer",
+          "description": "1-based line number of the taint source."
+        },
+        "expr": {
+          "type": "string",
+          "description": "Go expression at the source (e.g. r.FormValue(\"scope\"))."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Source kind label (e.g. http_param, form_value, header, cookie, query_param)."
+        }
+      }
+    },
+    "sink": {
+      "type": "object",
+      "description": "Taint sink endpoint — the location where tainted data is consumed in a security-sensitive way.",
+      "required": ["file", "line", "expr", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Workspace-relative path to the sink file."
+        },
+        "line": {
+          "type": "integer",
+          "description": "1-based line number of the taint sink."
+        },
+        "expr": {
+          "type": "string",
+          "description": "Go expression at the sink (e.g. db.Query(query))."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Sink kind label (e.g. sql_exec, sql_query, redirect, scope_grant)."
+        }
+      }
+    },
+    "max_depth": {
+      "type": "integer",
+      "description": "Maximum call-graph depth to explore when tracing the taint flow. Default is implementation-defined."
+    },
+    "semgrep_tier": {
+      "type": "string",
+      "enum": ["pro", "intrafile", "ce"],
+      "description": "Semgrep tier to use for taint analysis. 'pro' = Semgrep Pro inter-procedural, 'intrafile' = OpenGrep intrafile, 'ce' = OpenGrep CE."
+    },
+    "review_session_id": {
+      "type": "string",
+      "description": "UUID identifying the current security review session."
+    },
+    "code_ref": {
+      "type": "string",
+      "description": "Git reference of the code being reviewed."
+    },
+    "code_ref_dirty": {
+      "type": "boolean",
+      "description": "True if the working tree has uncommitted changes at review time."
+    }
+  }
+}

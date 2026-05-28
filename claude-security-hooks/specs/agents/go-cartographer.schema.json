@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "go-cartographer agent input",
+  "type": "object",
+  "required": ["working_directory"],
+  "additionalProperties": false,
+  "properties": {
+    "working_directory": {
+      "type": "string",
+      "description": "Absolute path to the Go project root. All cartographer output files are written here (go-index.json, etc.)."
+    },
+    "review_session_id": {
+      "type": "string",
+      "description": "UUID identifying the current security review session. Propagated to all specialist agent inputs and to synthesis."
+    },
+    "code_ref": {
+      "type": "string",
+      "description": "Git reference (branch, tag, or commit SHA) of the code being reviewed. Used for traceability."
+    },
+    "code_ref_dirty": {
+      "type": "boolean",
+      "description": "True if the working tree has uncommitted changes at review time. Propagated to all downstream verdicts."
+    }
+  }
+}
