@@ -2,7 +2,7 @@
 # Provides integration-level build orchestration for all project binaries.
 # Component build logic lives in each component's own Makefile.
 
-.PHONY: help verify-opengrep-mcp build-opengrep-mcp
+.PHONY: help verify-opengrep-mcp build-opengrep-mcp preflight
 
 OPENGREP_BIN := .claude/hooks/bin/opengrep-mcp
 
@@ -13,6 +13,7 @@ help:
 	@echo "Targets:"
 	@echo "  verify-opengrep-mcp   Verify the opengrep-mcp binary is installed and statically linked"
 	@echo "  build-opengrep-mcp    Build and install opengrep-mcp binary (see Plan 09-02)"
+	@echo "  preflight             Run bootstrap pre-flight checks against TARGET (default: .)"
 
 ## verify-opengrep-mcp: Verify the opengrep-mcp binary exists, is executable, and is statically linked.
 ## This target is the TDD RED-phase gate: it must fail until build-opengrep-mcp has run.
@@ -27,3 +28,8 @@ build-opengrep-mcp:
 	@mkdir -p .claude/hooks/bin
 	$(MAKE) -C /home/saghaulor/code/opengrep-mcp build
 	@cp /home/saghaulor/code/opengrep-mcp/bin/opengrep-mcp .claude/hooks/bin/opengrep-mcp
+
+## preflight: Run bootstrap pre-flight checks against TARGET (default: .)
+## Usage: make preflight TARGET=/path/to/go/project
+preflight:
+	@bash bootstrap/pre-flight-checks.sh "$(TARGET)"
