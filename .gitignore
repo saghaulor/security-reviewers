@@ -35,6 +35,7 @@ vendor/
 *.log
 
 # Generated review outputs
+examples/sample-vulnerable-service/*.json
 review-report.json
 review-report.md
 govulncheck.json
