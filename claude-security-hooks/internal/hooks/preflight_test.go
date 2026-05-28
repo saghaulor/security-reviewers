@@ -164,3 +164,97 @@ func TestPreflight_InputTooLarge_ClassB(t *testing.T) {
 		t.Fatal("expected non-nil error for input > 1 MB")
 	}
 }
+
+// TestPreflight_OAuthUnknownField_SchemaDocInError verifies W5 D-09 schema doc injection:
+// when go-oauth-auditor receives a prompt with an unknown field (working_directory), the
+// block reason MUST contain "Expected schema:" followed by a JSON Schema fragment that
+// mentions oauth_locations and additionalProperties:false.
+// RED: current preflight.go only emits the parse error, no schema doc → must FAIL.
+func TestPreflight_OAuthUnknownField_SchemaDocInError(t *testing.T) {
+	// Prompt with valid oauth_locations but unexpected working_directory field.
+	prompt := `{"oauth_locations": {}, "working_directory": "/tmp/project"}`
+	ev := PreToolUseEvent{
+		SessionID:      "s1",
+		TranscriptPath: "t1",
+		CWD:            "/tmp",
+		HookEventName:  "PreToolUse",
+		ToolName:       "Task",
+		ToolInput: TaskToolInput{
+			SubagentType: "go-oauth-auditor",
+			Prompt:       prompt,
+		},
+		ToolUseID: "u1",
+	}
+	body, _ := json.Marshal(ev)
+	stdin := bytes.NewReader(body)
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+
+	err := Preflight(stdin, stdout, stderr)
+	if err != nil {
+		t.Errorf("Preflight returned error: %v", err)
+	}
+	if stdout.Len() == 0 {
+		t.Fatal("expected stdout block for oauth prompt with unknown field")
+	}
+	var result struct {
+		Decision string `json:"decision"`
+		Reason   string `json:"reason"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v", err)
+	}
+	if result.Decision != "block" {
+		t.Errorf("expected decision=block, got %q", result.Decision)
+	}
+	// Must still identify the D-09 code and the offending field name.
+	if !strings.Contains(result.Reason, "D-09") {
+		t.Errorf("expected D-09 in reason, got: %s", result.Reason)
+	}
+	if !strings.Contains(result.Reason, "working_directory") {
+		t.Errorf("expected 'working_directory' in reason, got: %s", result.Reason)
+	}
+	// W5: block reason must include the expected schema so the agent can self-correct.
+	// RED: current preflight.go does not add "Expected schema:" → assertion fails.
+	if !strings.Contains(result.Reason, "Expected schema:") {
+		t.Errorf("W5 schema doc: expected block reason to contain \"Expected schema:\" fragment, got: %s", result.Reason)
+	}
+	// The schema fragment must mention oauth_locations (required field) and additionalProperties.
+	if !strings.Contains(result.Reason, "oauth_locations") {
+		t.Errorf("W5 schema doc: expected schema fragment to mention oauth_locations, got: %s", result.Reason)
+	}
+	if !strings.Contains(result.Reason, "additionalProperties") {
+		t.Errorf("W5 schema doc: expected schema fragment to mention additionalProperties, got: %s", result.Reason)
+	}
+}
+
+// TestPreflight_CartographerInput_SilentPass verifies that go-cartographer PreToolUse
+// events are always allowed through silently (cartographer has no JSON prompt contract).
+// This should PASS already — included to confirm the silent-pass is preserved after W5.
+func TestPreflight_CartographerInput_SilentPass(t *testing.T) {
+	prompt := `{"working_directory": "/some/path", "review_session_id": "abc"}`
+	ev := PreToolUseEvent{
+		SessionID:      "s1",
+		TranscriptPath: "t1",
+		CWD:            "/tmp",
+		HookEventName:  "PreToolUse",
+		ToolName:       "Task",
+		ToolInput: TaskToolInput{
+			SubagentType: "go-cartographer",
+			Prompt:       prompt,
+		},
+		ToolUseID: "u1",
+	}
+	body, _ := json.Marshal(ev)
+	stdin := bytes.NewReader(body)
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+
+	err := Preflight(stdin, stdout, stderr)
+	if err != nil {
+		t.Errorf("Preflight returned error: %v", err)
+	}
+	if stdout.Len() > 0 {
+		t.Errorf("expected empty stdout for cartographer (silent pass), got: %s", stdout.String())
+	}
+}
