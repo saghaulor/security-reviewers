@@ -27,9 +27,11 @@ type Entrypoint struct {
 }
 
 type Handler struct {
-	FQN  string `json:"fqn"`
-	File string `json:"file"`
-	Line int    `json:"line"`
+	FQN                string `json:"fqn"`
+	File               string `json:"file"`
+	Line               int    `json:"line"`
+	FirstParamReadLine int    `json:"first_param_read_line,omitempty"`
+	FirstParamReadExpr string `json:"first_param_read_expr,omitempty"`
 }
 
 type MiddlewareEntry struct {
