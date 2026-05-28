@@ -1,7 +1,10 @@
 package schema_test
 
 import (
+	"encoding/json"
 	"testing"
+
+	"github.com/saghaulor/claude-security-hooks/internal/schema"
 )
 
 // --- E1: CodeRef Round-Trip Tests (compile-error RED until Wave 1) ---
@@ -211,4 +214,87 @@ func TestInvariantCheckerInput_CodeRefRoundTrip(t *testing.T) {
 	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
 
 	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to InvariantCheckerInput (Wave 1)")
+}
+
+// --- W7: Handler.FirstParamReadLine / FirstParamReadExpr round-trip tests ---
+//
+// These tests verify that Handler gains two new fields:
+//   FirstParamReadLine int    `json:"first_param_read_line,omitempty"`
+//   FirstParamReadExpr string `json:"first_param_read_expr,omitempty"`
+//
+// Both tests will produce a COMPILE ERROR until 13-04 Task 2 adds the fields.
+// The compile error IS the correct RED state for struct-addition tests.
+
+// TestHandler_FirstParamReadLine_RoundTrip verifies that Handler serializes and
+// deserializes the new FirstParamReadLine and FirstParamReadExpr fields correctly.
+// RED: compile error until Handler struct gains these fields.
+func TestHandler_FirstParamReadLine_RoundTrip(t *testing.T) {
+	h := schema.Handler{
+		FQN:                "example.Handler",
+		File:               "handlers.go",
+		Line:               42,
+		FirstParamReadLine: 44,
+		FirstParamReadExpr: `c.Query("id")`,
+	}
+	data, err := json.Marshal(h)
+	if err != nil {
+		t.Fatalf("Marshal Handler: %v", err)
+	}
+
+	// Verify keys present in raw JSON map.
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("Unmarshal to map: %v", err)
+	}
+	if v, ok := raw["first_param_read_line"]; !ok {
+		t.Error("expected key first_param_read_line in JSON")
+	} else if v != float64(44) {
+		t.Errorf("first_param_read_line: got %v, want 44", v)
+	}
+	if v, ok := raw["first_param_read_expr"]; !ok {
+		t.Error("expected key first_param_read_expr in JSON")
+	} else if v != `c.Query("id")` {
+		t.Errorf("first_param_read_expr: got %v, want c.Query(\"id\")", v)
+	}
+
+	// Round-trip: unmarshal back into Handler and assert field values.
+	var h2 schema.Handler
+	if err := json.Unmarshal(data, &h2); err != nil {
+		t.Fatalf("Unmarshal to Handler: %v", err)
+	}
+	if h2.FirstParamReadLine != 44 {
+		t.Errorf("round-trip FirstParamReadLine: got %d, want 44", h2.FirstParamReadLine)
+	}
+	if h2.FirstParamReadExpr != `c.Query("id")` {
+		t.Errorf("round-trip FirstParamReadExpr: got %q, want c.Query(\"id\")", h2.FirstParamReadExpr)
+	}
+}
+
+// TestHandler_FirstParamReadLine_OmitEmpty verifies that zero-value FirstParamReadLine
+// and empty FirstParamReadExpr are omitted from JSON output (omitempty semantics).
+// RED: compile error until Handler struct gains these fields.
+func TestHandler_FirstParamReadLine_OmitEmpty(t *testing.T) {
+	h := schema.Handler{
+		FQN:  "example.NoParamHandler",
+		File: "handlers.go",
+		Line: 10,
+		// FirstParamReadLine: zero-value (0)
+		// FirstParamReadExpr: zero-value ("")
+	}
+	data, err := json.Marshal(h)
+	if err != nil {
+		t.Fatalf("Marshal Handler: %v", err)
+	}
+
+	// Verify that omitempty fields are absent from JSON.
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("Unmarshal to map: %v", err)
+	}
+	if _, ok := raw["first_param_read_line"]; ok {
+		t.Error("first_param_read_line should be omitted (omitempty) when zero")
+	}
+	if _, ok := raw["first_param_read_expr"]; ok {
+		t.Error("first_param_read_expr should be omitted (omitempty) when empty")
+	}
 }
