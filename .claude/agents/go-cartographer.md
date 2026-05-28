@@ -62,14 +62,31 @@ Run `mcp__gopls__go_search` in parallel for each of the known router import path
 
 For each detected router, run `mcp__opengrep__scan_with_rule` with the appropriate router-specific Semgrep pattern to enumerate route registrations. Extract for each route: the HTTP path string, method, handler function symbol, and the middleware chain (global, group-level, and route-level middleware, in that order). Record each as an entrypoint entry. If a detected router yields zero routes, add `"router_detected_but_no_routes"` to `warnings`.
 
-Router-specific Semgrep patterns to use:
-- `chi`: match `r.Get(...)`, `r.Post(...)`, `r.Route(...)`, `r.Group(...)`, `r.Use(...)`, `r.With(...)`
-- `gin`: match `r.GET(...)`, `r.POST(...)`, `r.Group(...)`, `r.Use(...)`, `r.Handle(...)`
-- `gorilla/mux`: match `r.HandleFunc(...)`, `r.Handle(...)`, `r.PathPrefix(...)`, `r.Use(...)`
-- `echo`: match `e.GET(...)`, `e.POST(...)`, `e.Group(...)`, `e.Use(...)`
-- `fiber`: match `app.Get(...)`, `app.Post(...)`, `app.Group(...)`, `app.Use(...)`
-- `httprouter`: match `router.GET(...)`, `router.POST(...)`, `router.Handle(...)`
-- `net/http`: match `http.HandleFunc(...)`, `http.Handle(...)`, `mux.HandleFunc(...)`, `mux.Handle(...)`
+Router-specific Semgrep patterns to use (all patterns use metavariables to match any receiver variable name):
+- `gin`: match `$ROUTER.GET($PATH, ...)`, `$ROUTER.POST($PATH, ...)`, `$ROUTER.DELETE($PATH, ...)`, `$ROUTER.PATCH($PATH, ...)`, `$ROUTER.PUT($PATH, ...)`, `$ROUTER.Handle($METHOD, $PATH, ...)`, `$ROUTER.Group($PATH, ...)`
+- `chi`: match `$R.Get($PATH, ...)`, `$R.Post($PATH, ...)`, `$R.Route($PATH, ...)`, `$R.Group($PATH, ...)`, `$R.Use(...)`
+- `gorilla/mux`: match `$R.HandleFunc($PATH, ...)`, `$R.Handle($PATH, ...)`, `$R.PathPrefix($PATH, ...)`
+- `echo`: match `$E.GET($PATH, ...)`, `$E.POST($PATH, ...)`, `$E.Group($PATH, ...)`
+- `fiber`: match `$APP.Get($PATH, ...)`, `$APP.Post($PATH, ...)`, `$APP.Group($PATH, ...)`
+- `httprouter`: match `$ROUTER.GET($PATH, ...)`, `$ROUTER.POST($PATH, ...)`, `$ROUTER.Handle($METHOD, $PATH, ...)`
+- `net/http`: match `http.HandleFunc(...)`, `http.Handle(...)`, `mux.HandleFunc(...)`, `mux.Handle(...)` (already variable-name-agnostic)
+
+After extracting each handler's definition line, scan the handler function body for the first HTTP parameter read expression using `Read` or `mcp__codegraph__codegraph_node`. Gin parameter kinds to look for: `c.Query(...)`, `c.PostForm(...)`, `c.Param(...)`, `c.ShouldBind*(...)`, `c.GetRawData()`. Record the line number as `handler.first_param_read_line` and the expression text as `handler.first_param_read_expr` in the entrypoint output (omit both fields if no parameter read is found in the handler body).
+
+**Step 3.5: Cross-reference router registrations vs. detected entrypoints**
+
+After completing Step 3's Semgrep-based enumeration, perform a post-processing validation:
+
+1. Read `main.go` (and any other file that registers routes — check for `router.go`, `routes.go`, `server.go` via `Glob("*.go")`) in the working directory.
+2. Use `mcp__opengrep__scan_with_rule` with the permissive gin pattern `$ROUTER.{GET,POST,DELETE,PATCH,PUT,Handle}($PATH, ...)` against each identified route-registration file. Collect all `($METHOD, $PATH, $HANDLER_NAME)` tuples found in the source.
+3. Compare each tuple against the `entrypoints` array built in Step 3. For each tuple where `$PATH` is absent from the entrypoints `path` field:
+   a. Attempt to resolve the handler FQN using `mcp__codegraph__codegraph_search` for the handler symbol name.
+   b. If FQN is resolvable: add the missing entrypoint to the `entrypoints` array (filling all required fields per A3).
+   c. If FQN cannot be resolved: add a string to the `warnings` array: `"route_registration_gap: <METHOD> <PATH> → <HANDLER_NAME> not in entrypoints (handler FQN unresolvable)"`.
+   d. If FQN is resolved but you cannot determine the handler file/line: add a warning: `"route_registration_gap: <METHOD> <PATH> → <FQN> entrypoint added with inferred location"`.
+4. Log a count of gaps found and resolved. If zero gaps found, Step 3.5 produces no warnings.
+
+**A5-supplement:** If Step 3.5 finds any registration-gap routes that could not be resolved (case c above), these MUST appear in `warnings`. Do not silently drop them.
 
 **Step 4: Enumerate sinks by kind**
 
