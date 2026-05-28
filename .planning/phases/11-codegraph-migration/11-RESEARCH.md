@@ -306,7 +306,7 @@ File must be `chmod +x`.
 
 **Body §2 error response shape:** Update `detail` field:
 - Old: `"detail": "graphify-out/graph.json not found. Run: graphify build ."`
-- New: `"detail": "codegraph index not found or empty. Run: codegraph init TARGET_DIR && codegraph index TARGET_DIR"`
+- New: `"detail": "codegraph index not found or empty. Run: codegraph init TARGET_DIR then: codegraph index TARGET_DIR"`
 
 **Body §3 Step 1:** Replace graphify-specific checks:
 - Old: "Read `graphify-out/graph.json` to confirm it exists. Compute its SHA-256 hash — this becomes `graph_version` in the output. Call `mcp__graphify__graph_stats` to confirm the MCP server is reachable."
@@ -328,9 +328,11 @@ File must be `chmod +x`.
 - codegraph does not have an AMBIGUOUS edge type; dynamic dispatch is instead surfaced as a gap in `codegraph_trace` output
 - New: "Call `mcp__codegraph__codegraph_trace` with `from: <entrypoint>` and `to: <sink>` for each entrypoint-sink pair where the call path is not already confirmed. Where `codegraph_trace` reports 'no static path' or 'breaks at dynamic dispatch', record those (entrypoint, sink) pairs in `ambiguous_nodes` with reason `dynamic_dispatch_break`."
 
-**Body §5 Output Schema:** Update `graph_version` comment:
-- Old: `"graph_version": "<sha256 of graphify-out/graph.json>"`
-- New: `"graph_version": "<codegraph status fingerprint: 'codegraph:<N>files/<M>nodes'>"`
+**Body §5 Output Schema:** Update `graph_version` comment and Field notes:
+- Old schema comment: `"graph_version": "<sha256 of graphify-out/graph.json>"`
+- New schema comment: `"graph_version": "<codegraph status fingerprint: 'codegraph:<N>files/<M>nodes'>"`
+- Old field note: `- \`graph_version\`: SHA-256 hex string of \`graphify-out/graph.json\` at analysis time.`
+- New field note: `- \`graph_version\`: codegraph status fingerprint string at analysis time: \`"codegraph:<N>files/<M>nodes"\``
 
 **Body §6 Hard Rules:** Update A6 and A10:
 - A6 now references codegraph node IDs (from `codegraph_node` or `codegraph_search` responses), not `graphify-out/graph.json`
@@ -476,16 +478,16 @@ export const NODE_KINDS = [
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `codegraph serve --mcp --path <uninitialized-path>` error at startup or on first tool call?**
    - What we know: `MCPServer` constructor accepts optional `projectPath`; `start()` resolves daemon root via `findNearestCodeGraphRoot`; if no root found, falls back to direct mode
    - What's unclear: In direct mode with an explicit uninit path, does the server start but fail on tool calls, or fail at startup?
-   - Recommendation: The Step 3 `init` + `index` sequence prevents this in practice. Document the error message for the precondition failure in go-cartographer §2.
+   - RESOLVED: The Step 3 `init` + `index` sequence prevents this in practice. go-cartographer §2 precondition calls `codegraph_status` and fails fast if 0 files indexed, surfacing a clear error before any analysis proceeds.
 
 2. **Should `graphify-out/` entry remain in `.gitignore` of `examples/sample-vulnerable-service/`?**
    - What we know: The current `.gitignore` has `graphify-out/`. After migration, graphify will not run and `graphify-out/` will never be created.
-   - Recommendation: Leave `graphify-out/` in `.gitignore` (harmless). Add `.codegraph/` as a new line. D-7 only requires adding `.codegraph/` — no removal required.
+   - RESOLVED: Leave `graphify-out/` in `.gitignore` (harmless). Add `.codegraph/` as a new line. D-7 only requires adding `.codegraph/` — no removal required.
 
 ---
 
