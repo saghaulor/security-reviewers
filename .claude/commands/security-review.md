@@ -176,13 +176,15 @@ Output file: `TARGET_DIR/invariant-results.json`
 
 For each sink in `sinks_by_kind.sql_exec` from go-index.json, spawn a separate `go-taint-tracer` Task. Construct source/sink pairs by matching each SQL sink's file/line to the nearest handler function from `entrypoints`.
 
+When constructing the `source` field, use `first_param_read_line` from the entrypoint's `handler` object if it is present and non-zero; otherwise fall back to `handler.line` (the function definition line). Use `first_param_read_expr` as the `expr` value if present; otherwise use the inferred parameter read expression.
+
 For each (handler entrypoint, SQL sink) pair, the input is:
 ```json
 {
   "source": {
     "file": "<handler file from entrypoints>",
-    "line": <handler line from entrypoints>,
-    "expr": "r.URL.Query().Get(\"...\") or r.PostForm or r.Body",
+    "line": <first_param_read_line from entrypoints if present, otherwise handler.line>,
+    "expr": "<first_param_read_expr from entrypoints if present, otherwise 'r.URL.Query().Get(...) or r.PostForm or r.Body'>",
     "kind": "http_query"
   },
   "sink": {
