@@ -41,10 +41,20 @@ func newStrictDecoder(text string) *json.Decoder {
 	return dec
 }
 
+// contentPreview returns up to the first 100 characters of s as a quoted string,
+// suitable for inclusion in block-reason error messages (W4).
+func contentPreview(s string) string {
+	if len(s) > 100 {
+		return fmt.Sprintf("%q", s[:100])
+	}
+	return fmt.Sprintf("%q", s)
+}
+
 func runCartographer(verdictText string) ([]string, error) {
 	var idx schema.CartographerIndex
 	if err := newStrictDecoder(verdictText).Decode(&idx); err != nil {
-		return []string{FormatViolation("A1", "cartographer verdict parse", invariants.Violation{Path: "", Expected: "", Actual: err.Error()})}, nil
+		desc := fmt.Sprintf("cartographer verdict parse | content(first 100): %s", contentPreview(verdictText))
+		return []string{FormatViolation("A1", desc, invariants.Violation{})}, nil
 	}
 	var reasons []string
 	for _, inv := range invariants.CartographerInvariants {
@@ -58,7 +68,8 @@ func runCartographer(verdictText string) ([]string, error) {
 func runTaintTracer(verdictText, inputText string) ([]string, error) {
 	var v schema.TaintVerdict
 	if err := newStrictDecoder(verdictText).Decode(&v); err != nil {
-		return []string{FormatViolation("T1", "taint verdict parse", invariants.Violation{Path: "", Expected: "", Actual: err.Error()})}, nil
+		desc := fmt.Sprintf("taint verdict parse | content(first 100): %s", contentPreview(verdictText))
+		return []string{FormatViolation("T1", desc, invariants.Violation{})}, nil
 	}
 	var reasons []string
 	for _, inv := range invariants.TaintTracerInvariants {
@@ -82,7 +93,8 @@ func runTaintTracer(verdictText, inputText string) ([]string, error) {
 func runAuthzTracer(verdictText, inputText string) ([]string, error) {
 	var v schema.AuthzVerdict
 	if err := newStrictDecoder(verdictText).Decode(&v); err != nil {
-		return []string{FormatViolation("AZ1", "authz verdict parse", invariants.Violation{Path: "", Expected: "", Actual: err.Error()})}, nil
+		desc := fmt.Sprintf("authz verdict parse | content(first 100): %s", contentPreview(verdictText))
+		return []string{FormatViolation("AZ1", desc, invariants.Violation{})}, nil
 	}
 	var reasons []string
 	for _, inv := range invariants.AuthzInvariants {
@@ -106,7 +118,8 @@ func runAuthzTracer(verdictText, inputText string) ([]string, error) {
 func runOAuthAuditor(verdictText, inputText string) ([]string, error) {
 	var v schema.OAuthVerdict
 	if err := newStrictDecoder(verdictText).Decode(&v); err != nil {
-		return []string{FormatViolation("OA1", "oauth verdict parse", invariants.Violation{Path: "", Expected: "", Actual: err.Error()})}, nil
+		desc := fmt.Sprintf("oauth verdict parse | content(first 100): %s", contentPreview(verdictText))
+		return []string{FormatViolation("OA1", desc, invariants.Violation{})}, nil
 	}
 	var reasons []string
 	for _, inv := range invariants.OAuthInvariants {
@@ -130,7 +143,8 @@ func runOAuthAuditor(verdictText, inputText string) ([]string, error) {
 func runInvariantChecker(verdictText, inputText string) ([]string, error) {
 	var v schema.InvariantCheckerVerdict
 	if err := newStrictDecoder(verdictText).Decode(&v); err != nil {
-		return []string{FormatViolation("IC1", "invariant-checker verdict parse", invariants.Violation{Path: "", Expected: "", Actual: err.Error()})}, nil
+		desc := fmt.Sprintf("invariant-checker verdict parse | content(first 100): %s", contentPreview(verdictText))
+		return []string{FormatViolation("IC1", desc, invariants.Violation{})}, nil
 	}
 	var reasons []string
 	for _, inv := range invariants.InvariantCheckerInvariants {
@@ -154,7 +168,8 @@ func runInvariantChecker(verdictText, inputText string) ([]string, error) {
 func runSynthesis(verdictText string) ([]string, error) {
 	var r schema.SynthesisReport
 	if err := newStrictDecoder(verdictText).Decode(&r); err != nil {
-		return []string{FormatViolation("S2", "synthesis verdict parse", invariants.Violation{Path: "", Expected: "", Actual: err.Error()})}, nil
+		desc := fmt.Sprintf("synthesis verdict parse | content(first 100): %s", contentPreview(verdictText))
+		return []string{FormatViolation("S2", desc, invariants.Violation{})}, nil
 	}
 	var reasons []string
 	for _, inv := range invariants.SynthesisInvariants {

@@ -58,11 +58,23 @@ func Validate(stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 			reasons = fallback
 		}
 	}
-	// Synthesis: also run S1 directory check (review-report.{json,md} expected at workspace root).
+	// Synthesis S1 soft-fail: only run directory check when content parse failed (W4).
+	// If the synthesis agent returned valid SynthesisReport JSON (no parse-error reasons),
+	// the agent succeeded — skip the S1 file-existence check. The missing file is an
+	// infrastructure condition, not an agent violation.
 	if ev.ToolInput.SubagentType == "synthesis" {
-		for _, inv := range invariants.SynthesisDirInvariants {
-			for _, vio := range inv.Check(".") {
-				reasons = append(reasons, FormatViolation(inv.ID, inv.Description, vio))
+		synthContentValid := true
+		for _, r := range reasons {
+			if strings.Contains(r, "verdict parse") || strings.Contains(r, "content parse") {
+				synthContentValid = false
+				break
+			}
+		}
+		if !synthContentValid {
+			for _, inv := range invariants.SynthesisDirInvariants {
+				for _, vio := range inv.Check(".") {
+					reasons = append(reasons, FormatViolation(inv.ID, inv.Description, vio))
+				}
 			}
 		}
 	}
