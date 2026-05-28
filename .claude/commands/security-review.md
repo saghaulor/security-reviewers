@@ -142,7 +142,6 @@ Output file: `TARGET_DIR/authz-findings.json`
 Input:
 ```json
 {
-  "working_directory": "<TARGET_DIR>",
   "oauth_locations": <oauth_locations object from go-index.json>,
   "review_session_id": "<SESSION_ID>",
   "code_ref": "<CODE_REF>",
@@ -150,7 +149,7 @@ Input:
 }
 ```
 
-Output file: `TARGET_DIR/oauth-checklist.json`
+Output file: `TARGET_DIR/oauth-checklist.json` (written relative to the agent's working directory, like the other tracers — `working_directory` is intentionally NOT an input field; the `go-oauth-auditor` schema forbids it via `additionalProperties: false`).
 
 ### Tracer 3: invariant-checker
 

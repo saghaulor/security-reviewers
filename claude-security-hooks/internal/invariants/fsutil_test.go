@@ -8,6 +8,37 @@ import (
 	"github.com/saghaulor/claude-security-hooks/internal/invariants"
 )
 
+// TestFileExists_UsesFSRootNotCWD verifies that when a workspace root is configured
+// via SetFSRoot, workspace-relative paths resolve against that root rather than the
+// process working directory — so validation no longer depends on os.Chdir (WR-05).
+func TestFileExists_UsesFSRootNotCWD(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "marker.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Point the process CWD at an unrelated directory, so a CWD-relative resolution
+	// would miss the file.
+	otherCWD := t.TempDir()
+	prev, _ := os.Getwd()
+	if err := os.Chdir(otherCWD); err != nil {
+		t.Fatalf("Chdir: %v", err)
+	}
+	defer func() { _ = os.Chdir(prev) }()
+
+	// Precondition: without a configured root, resolution is CWD-relative → not found.
+	if invariants.FileExists("marker.json") {
+		t.Fatal("precondition: marker.json should not resolve against the unrelated CWD")
+	}
+
+	invariants.SetFSRoot(root)
+	defer invariants.SetFSRoot("")
+
+	if !invariants.FileExists("marker.json") {
+		t.Errorf("FileExists should resolve %q against the configured fsRoot, not the process CWD", "marker.json")
+	}
+}
+
 func TestFileExists_RegularFile(t *testing.T) {
 	path := filepath.Join("testdata", "workspace", "handler.go")
 	if !invariants.FileExists(path) {

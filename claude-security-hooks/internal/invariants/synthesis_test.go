@@ -120,8 +120,8 @@ func TestS2_VerdictRequiredFields(t *testing.T) {
 				t.Errorf("got %d violations, want %d", len(violations), tt.wantErr)
 			}
 			if tt.wantErr > 0 && len(violations) > 0 {
-				if violations[0].Path != "scma_version" {
-					t.Errorf("got path %q, want %q", violations[0].Path, "scma_version")
+				if violations[0].Path != "schema_version" {
+					t.Errorf("got path %q, want %q", violations[0].Path, "schema_version")
 				}
 				if violations[0].Expected != "review-report/v1" {
 					t.Errorf("got Expected %q, want %q", violations[0].Expected, "review-report/v1")

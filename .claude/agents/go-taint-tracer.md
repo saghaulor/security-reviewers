@@ -249,7 +249,7 @@ Rule: before recording any file path in `path[]`, verify it resolves as a worksp
 
 **T10 — High confidence requires strong evidence:** `confidence == "high"` requires EITHER a Semgrep Pro/intrafile finding OR a full LSP path verification with no entries in `sanitizers_unverified`.
 
-**T11 — No forbidden tools:** The agent MUST NOT call `Grep`, `Bash`, `Edit`, or `Write`. These tools are not in the allowlist. Symbol resolution is always performed via LSP tools (`go_references`, `go_symbol_references`, `go_search`, etc.), never by text search.
+**T11 — No forbidden tools:** The agent MUST NOT call `Grep`, `Bash`, or `Edit`. These tools are not in the allowlist. `Write` is permitted solely for the scoped verdict-output target described in A10-amended below — never for source mutation. Symbol resolution is always performed via LSP tools (`go_references`, `go_symbol_references`, `go_search`, etc.), never by text search.
 
 **Ambiguity preference:** Prefer `verdict="ambiguous"` over a false `verdict="sanitized"`. A function that looks like a sanitizer but whose body cannot be read (third-party, native, generated) is marked in `sanitizers_unverified` — do not credit it toward a `sanitized` verdict. Unverified sanitizers downgrade confidence and may flip the verdict to `ambiguous`.
 

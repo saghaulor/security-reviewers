@@ -69,16 +69,28 @@ Router-specific Semgrep patterns to use (all patterns use metavariables to match
 - `echo`: match `$E.GET($PATH, ...)`, `$E.POST($PATH, ...)`, `$E.Group($PATH, ...)`
 - `fiber`: match `$APP.Get($PATH, ...)`, `$APP.Post($PATH, ...)`, `$APP.Group($PATH, ...)`
 - `httprouter`: match `$ROUTER.GET($PATH, ...)`, `$ROUTER.POST($PATH, ...)`, `$ROUTER.Handle($METHOD, $PATH, ...)`
-- `net/http`: match `http.HandleFunc(...)`, `http.Handle(...)`, `mux.HandleFunc(...)`, `mux.Handle(...)` (already variable-name-agnostic)
+- `net/http`: match `http.HandleFunc($PATH, ...)`, `http.Handle($PATH, ...)`, `$MUX.HandleFunc($PATH, ...)`, `$MUX.Handle($PATH, ...)` (the `$MUX` metavariable matches any `*http.ServeMux` receiver name — e.g. `mux`, `myMux`, `srvMux` — not just the literal `mux`)
 
-After extracting each handler's definition line, scan the handler function body for the first HTTP parameter read expression using `Read` or `mcp__codegraph__codegraph_node`. Gin parameter kinds to look for: `c.Query(...)`, `c.PostForm(...)`, `c.Param(...)`, `c.ShouldBind*(...)`, `c.GetRawData()`. Record the line number as `handler.first_param_read_line` and the expression text as `handler.first_param_read_expr` in the entrypoint output (omit both fields if no parameter read is found in the handler body).
+After extracting each handler's definition line, scan the handler function body for the first HTTP parameter read expression using `Read` or `mcp__codegraph__codegraph_node`. Select the parameter-read expressions appropriate to the handler's router (mirroring the source catalog in `go-taint-tracer.md` §4) — do not assume gin:
+- `net/http` / `chi` / `gorilla/mux`: `r.URL.Query().Get(...)`, `r.FormValue(...)`, `r.PostFormValue(...)`, `r.Header.Get(...)`, `r.Cookie(...)`, `chi.URLParam(r, ...)`, `mux.Vars(r)[...]`, `json.NewDecoder(r.Body).Decode(...)`, `io.ReadAll(r.Body)`
+- `gin` / `httprouter`: `c.Query(...)`, `c.PostForm(...)`, `c.Param(...)`, `c.GetHeader(...)`, `c.ShouldBind*(...)`, `c.GetRawData()`
+- `echo`: `c.QueryParam(...)`, `c.FormValue(...)`, `c.Param(...)`, `c.Request().Header.Get(...)`, `c.Bind(...)`
+- `fiber`: `c.Query(...)`, `c.FormValue(...)`, `c.Params(...)`, `c.Get(...)`, `c.Body()`, `c.BodyParser(...)`
+
+Record the line number as `handler.first_param_read_line` and the expression text as `handler.first_param_read_expr` in the entrypoint output (omit both fields if no parameter read is found in the handler body).
 
 **Step 3.5: Cross-reference router registrations vs. detected entrypoints**
 
 After completing Step 3's Semgrep-based enumeration, perform a post-processing validation:
 
 1. Read `main.go` (and any other file that registers routes — check for `router.go`, `routes.go`, `server.go` via `Glob("*.go")`) in the working directory.
-2. Use `mcp__opengrep__scan_with_rule` with the permissive gin pattern `$ROUTER.{GET,POST,DELETE,PATCH,PUT,Handle}($PATH, ...)` against each identified route-registration file. Collect all `($METHOD, $PATH, $HANDLER_NAME)` tuples found in the source.
+2. Use `mcp__opengrep__scan_with_rule` against each identified route-registration file with the registration pattern(s) for the router(s) detected in Step 2 — do not assume gin (a gin-only pattern silently finds zero matches against chi/echo/fiber and would either suppress all gap warnings or flag every route). Collect all `($METHOD, $PATH, $HANDLER_NAME)` tuples found in the source:
+   - `gin` / `httprouter`: `$ROUTER.{GET,POST,DELETE,PATCH,PUT,Handle}($PATH, ...)`
+   - `chi`: `$R.{Get,Post,Delete,Patch,Put,Handle}($PATH, ...)`
+   - `echo`: `$E.{GET,POST,DELETE,PATCH,PUT}($PATH, ...)`
+   - `fiber`: `$APP.{Get,Post,Delete,Patch,Put}($PATH, ...)`
+   - `gorilla/mux`: `$R.HandleFunc($PATH, ...)`, `$R.Handle($PATH, ...)`
+   - `net/http`: `http.HandleFunc($PATH, ...)`, `$MUX.HandleFunc($PATH, ...)`, `$MUX.Handle($PATH, ...)`
 3. Compare each tuple against the `entrypoints` array built in Step 3. For each tuple where `$PATH` is absent from the entrypoints `path` field:
    a. Attempt to resolve the handler FQN using `mcp__codegraph__codegraph_search` for the handler symbol name.
    b. If FQN is resolvable: add the missing entrypoint to the `entrypoints` array (filling all required fields per A3).

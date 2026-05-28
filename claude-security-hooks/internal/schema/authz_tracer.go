@@ -39,6 +39,10 @@ type AuthzVerdict struct {
 	CodeRefDirty        bool            `json:"code_ref_dirty,omitempty"`
 }
 
+// AuthzSummary holds per-bucket route counts. A route may be counted in more than
+// one bucket when it triggers multiple findings (e.g. both protected and idor_risk),
+// so the buckets are not a partition — their sum may exceed RoutesTotal. See AZ3 in
+// go-authz-tracer.md.
 type AuthzSummary struct {
 	RoutesTotal    int `json:"routes_total"`
 	Protected      int `json:"protected"`

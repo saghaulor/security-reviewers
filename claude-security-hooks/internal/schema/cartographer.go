@@ -70,7 +70,7 @@ type EndpointLoc struct {
 
 type PaymentSurface struct {
 	Files      []string `json:"files,omitempty"`
-	ClusterID  string   `json:"cluster_id"`
+	ClusterID  string   `json:"cluster_id,omitempty"`
 	Confidence string   `json:"confidence"`
 }
 

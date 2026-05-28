@@ -167,7 +167,7 @@ Emit the final JSON object as plain JSON in your last message (not wrapped in pr
 
 **AZ2 — Route count:** `summary.routes_total` MUST equal `len(input.routes)`.
 
-**AZ3 — Summary bucket accounting:** `summary.protected + summary.missing + summary.weak + summary.idor_risk + summary.public_intentional` MUST account for all routes. A route may appear in multiple buckets if it triggers multiple findings; dedup findings per route in the `findings` array but count in each bucket.
+**AZ3 — Summary bucket accounting:** Every route MUST be represented in at least one of `summary.protected`, `summary.missing`, `summary.weak`, `summary.idor_risk`, or `summary.public_intentional`. A route MAY appear in multiple buckets when it triggers multiple findings — for example, a route that has authz coverage but is also IDOR-prone counts in both `protected` and `idor_risk`. Consequently the five buckets are NOT a partition: their sum MAY exceed `summary.routes_total` (it must never be less, since every route is bucketed at least once). Dedup findings per route in the `findings` array, but count the route in each bucket whose condition it meets.
 
 **AZ4 — No fabricated routes:** Every `route` value in the `findings` array MUST correspond to a route present in the input. No invent rule: never cite a route not provided in input.
 

@@ -7,227 +7,105 @@ import (
 	"github.com/saghaulor/claude-security-hooks/internal/schema"
 )
 
-// --- E1: CodeRef Round-Trip Tests (compile-error RED until Wave 1) ---
+// --- E1: CodeRef Round-Trip Tests ---
 //
-// These tests verify that CodeRef and CodeRefDirty fields:
-// 1. Serialize correctly (CodeRef present, CodeRefDirty omitted when false)
-// 2. Deserialize correctly
-// 3. Round-trip without data loss
+// These tests verify that every schema struct carrying CodeRef/CodeRefDirty:
+//  1. Serializes code_ref when set.
+//  2. Omits code_ref_dirty when false (omitempty) and emits it when true.
+//  3. Round-trips both fields without data loss.
 //
-// All tests will compile-error RED until Wave 1 adds CodeRef and CodeRefDirty
-// fields to the 10 schema structs.
+// (The fields were added in Wave 1; these tests were previously skipped while the
+// structs lacked them — IN-01.)
 
-// TestCartographerIndex_CodeRefRoundTrip verifies that CartographerIndex
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
+// assertCodeRefRoundTrip marshals v, asserts code_ref serializes to wantRef and
+// code_ref_dirty follows omitempty semantics (present only when true), then
+// unmarshals into a fresh T and re-marshals to confirm both fields round-trip.
+// The round-trip check re-marshals the decoded value (rather than reflecting on
+// fields) so a single generic helper covers every struct type.
+func assertCodeRefRoundTrip[T any](t *testing.T, v T, wantRef string, wantDirty bool) {
+	t.Helper()
+
+	data, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("Marshal %T: %v", v, err)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("Unmarshal %T to map: %v", v, err)
+	}
+	if got, ok := raw["code_ref"].(string); !ok || got != wantRef {
+		t.Errorf("%T code_ref: got %v, want %q", v, raw["code_ref"], wantRef)
+	}
+	if wantDirty {
+		if got, ok := raw["code_ref_dirty"].(bool); !ok || !got {
+			t.Errorf("%T code_ref_dirty: got %v, want true", v, raw["code_ref_dirty"])
+		}
+	} else if _, ok := raw["code_ref_dirty"]; ok {
+		t.Errorf("%T code_ref_dirty should be omitted (omitempty) when false", v)
+	}
+
+	var back T
+	if err := json.Unmarshal(data, &back); err != nil {
+		t.Fatalf("Unmarshal %T: %v", back, err)
+	}
+	roundTripped, err := json.Marshal(back)
+	if err != nil {
+		t.Fatalf("re-Marshal %T: %v", back, err)
+	}
+	var raw2 map[string]any
+	if err := json.Unmarshal(roundTripped, &raw2); err != nil {
+		t.Fatalf("Unmarshal round-tripped %T: %v", back, err)
+	}
+	if got, ok := raw2["code_ref"].(string); !ok || got != wantRef {
+		t.Errorf("%T round-trip code_ref: got %v, want %q", back, raw2["code_ref"], wantRef)
+	}
+}
+
 func TestCartographerIndex_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to CartographerIndex:
-	// index := &schema.CartographerIndex{
-	//     SchemaVersion: "go-index/v1",
-	//     GraphVersion:  "1.0",
-	//     CodeRef:       "abc123def456",
-	//     CodeRefDirty:  false,
-	// }
-	//
-	// data, err := json.Marshal(index)
-	// if err != nil {
-	//     t.Fatalf("Marshal failed: %v", err)
-	// }
-	//
-	// // Verify CodeRef is present in JSON
-	// var raw map[string]interface{}
-	// json.Unmarshal(data, &raw)
-	// if v, ok := raw["code_ref"].(string); !ok || v != "abc123def456" {
-	//     t.Errorf("code_ref missing or wrong in JSON")
-	// }
-	//
-	// // Verify CodeRefDirty is omitted (omitempty)
-	// if _, ok := raw["code_ref_dirty"]; ok {
-	//     t.Errorf("code_ref_dirty should be omitted when false")
-	// }
-	//
-	// // Round-trip
-	// var unmarshaled schema.CartographerIndex
-	// if err := json.Unmarshal(data, &unmarshaled); err != nil {
-	//     t.Fatalf("Unmarshal failed: %v", err)
-	// }
-	// if unmarshaled.CodeRef != "abc123def456" || unmarshaled.CodeRefDirty != false {
-	//     t.Errorf("Round-trip failed: got %q/%v, want %q/%v",
-	//         unmarshaled.CodeRef, unmarshaled.CodeRefDirty, "abc123def456", false)
-	// }
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to CartographerIndex (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.CartographerIndex{CodeRef: "abc123def456", CodeRefDirty: false}, "abc123def456", false)
 }
 
-// TestTaintVerdict_CodeRefRoundTrip verifies that TaintVerdict
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestTaintVerdict_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to TaintVerdict:
-	// verdict := &schema.TaintVerdict{
-	//     Verdict:      "exploitable",
-	//     Confidence:   "high",
-	//     CodeRef:      "abc123",
-	//     CodeRefDirty: false,
-	// }
-	//
-	// data, err := json.Marshal(verdict)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to TaintVerdict (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.TaintVerdict{CodeRef: "abc123", CodeRefDirty: false}, "abc123", false)
 }
 
-// TestAuthzVerdict_CodeRefRoundTrip verifies that AuthzVerdict
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestAuthzVerdict_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to AuthzVerdict:
-	// verdict := &schema.AuthzVerdict{
-	//     Summary:      schema.AuthzSummary{RoutesTotal: 1, Protected: 1},
-	//     CodeRef:      "abc123",
-	//     CodeRefDirty: true,
-	// }
-	//
-	// data, err := json.Marshal(verdict)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to AuthzVerdict (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.AuthzVerdict{CodeRef: "abc123", CodeRefDirty: true}, "abc123", true)
 }
 
-// TestOAuthVerdict_CodeRefRoundTrip verifies that OAuthVerdict
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestOAuthVerdict_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to OAuthVerdict:
-	// verdict := &schema.OAuthVerdict{
-	//     Profile:      "oauth_2_0",
-	//     CodeRef:      "abc123",
-	//     CodeRefDirty: false,
-	// }
-	//
-	// data, err := json.Marshal(verdict)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to OAuthVerdict (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.OAuthVerdict{CodeRef: "abc123", CodeRefDirty: false}, "abc123", false)
 }
 
-// TestInvariantCheckerVerdict_CodeRefRoundTrip verifies that InvariantCheckerVerdict
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestInvariantCheckerVerdict_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to InvariantCheckerVerdict:
-	// verdict := &schema.InvariantCheckerVerdict{
-	//     FlowName:     "test_flow",
-	//     CodeRef:      "abc123",
-	//     CodeRefDirty: false,
-	// }
-	//
-	// data, err := json.Marshal(verdict)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to InvariantCheckerVerdict (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.InvariantCheckerVerdict{CodeRef: "abc123", CodeRefDirty: false}, "abc123", false)
 }
 
-// TestSynthesisReport_CodeRefRoundTrip verifies that SynthesisReport
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestSynthesisReport_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to SynthesisReport:
-	// report := &schema.SynthesisReport{
-	//     ReviewID:        "review-123",
-	//     Timestamp:       "2026-05-26T21:25:26Z",
-	//     SchemaVersion:   "review-report/v1",
-	//     CodeRef:         "abc123",
-	//     CodeRefDirty:    false,
-	// }
-	//
-	// data, err := json.Marshal(report)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to SynthesisReport (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.SynthesisReport{CodeRef: "abc123", CodeRefDirty: false}, "abc123", false)
 }
 
-// TestTaintInput_CodeRefRoundTrip verifies that TaintInput
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestTaintInput_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to TaintInput:
-	// input := &schema.TaintInput{
-	//     Source:       schema.TaintEndpoint{File: "main.go", Line: 10, Expr: "x", Kind: "param"},
-	//     Sink:         schema.TaintEndpoint{File: "db.go", Line: 50, Expr: "q", Kind: "sink"},
-	//     MaxDepth:     10,
-	//     SemgrepTier:  "pro",
-	//     CodeRef:      "abc123",
-	//     CodeRefDirty: false,
-	// }
-	//
-	// data, err := json.Marshal(input)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to TaintInput (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.TaintInput{CodeRef: "abc123", CodeRefDirty: false}, "abc123", false)
 }
 
-// TestAuthzInput_CodeRefRoundTrip verifies that AuthzInput
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestAuthzInput_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to AuthzInput:
-	// input := &schema.AuthzInput{
-	//     Routes: []schema.AuthzRoute{
-	//         {Router: "gin", Method: "GET", Path: "/api/users", Handler: schema.Handler{Name: "GetUsers"}},
-	//     },
-	//     CodeRef:      "abc123",
-	//     CodeRefDirty: false,
-	// }
-	//
-	// data, err := json.Marshal(input)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to AuthzInput (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.AuthzInput{CodeRef: "abc123", CodeRefDirty: true}, "abc123", true)
 }
 
-// TestOAuthInput_CodeRefRoundTrip verifies that OAuthInput
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestOAuthInput_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to OAuthInput:
-	// input := &schema.OAuthInput{
-	//     TargetProfile: "oauth_2_0",
-	//     OAuthLocations: schema.OAuthLocations{
-	//         AuthorizationEndpoint: []string{"https://provider.example.com/oauth/authorize"},
-	//     },
-	//     CodeRef:      "abc123",
-	//     CodeRefDirty: false,
-	// }
-	//
-	// data, err := json.Marshal(input)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to OAuthInput (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.OAuthInput{CodeRef: "abc123", CodeRefDirty: false}, "abc123", false)
 }
 
-// TestInvariantCheckerInput_CodeRefRoundTrip verifies that InvariantCheckerInput
-// serializes/deserializes CodeRef and CodeRefDirty fields correctly.
 func TestInvariantCheckerInput_CodeRefRoundTrip(t *testing.T) {
-	// After Wave 1 adds CodeRef and CodeRefDirty to InvariantCheckerInput:
-	// input := &schema.InvariantCheckerInput{
-	//     FlowName: "test_flow",
-	//     Invariants: []schema.InputInvariant{
-	//         {ID: "I1", Statement: "test invariant"},
-	//     },
-	//     CodeRef:      "abc123",
-	//     CodeRefDirty: false,
-	// }
-	//
-	// data, err := json.Marshal(input)
-	// // ... verify CodeRef/CodeRefDirty in JSON, round-trip, etc.
-
-	t.Skip("E1 compile-error RED: CodeRef/CodeRefDirty fields not yet added to InvariantCheckerInput (Wave 1)")
+	assertCodeRefRoundTrip(t, schema.InvariantCheckerInput{CodeRef: "abc123", CodeRefDirty: false}, "abc123", false)
 }
 
 // --- W7: Handler.FirstParamReadLine / FirstParamReadExpr round-trip tests ---
-//
-// These tests verify that Handler gains two new fields:
-//   FirstParamReadLine int    `json:"first_param_read_line,omitempty"`
-//   FirstParamReadExpr string `json:"first_param_read_expr,omitempty"`
-//
-// Both tests will produce a COMPILE ERROR until 13-04 Task 2 adds the fields.
-// The compile error IS the correct RED state for struct-addition tests.
 
 // TestHandler_FirstParamReadLine_RoundTrip verifies that Handler serializes and
-// deserializes the new FirstParamReadLine and FirstParamReadExpr fields correctly.
-// RED: compile error until Handler struct gains these fields.
+// deserializes the FirstParamReadLine and FirstParamReadExpr fields correctly.
 func TestHandler_FirstParamReadLine_RoundTrip(t *testing.T) {
 	h := schema.Handler{
 		FQN:                "example.Handler",
@@ -272,7 +150,6 @@ func TestHandler_FirstParamReadLine_RoundTrip(t *testing.T) {
 
 // TestHandler_FirstParamReadLine_OmitEmpty verifies that zero-value FirstParamReadLine
 // and empty FirstParamReadExpr are omitted from JSON output (omitempty semantics).
-// RED: compile error until Handler struct gains these fields.
 func TestHandler_FirstParamReadLine_OmitEmpty(t *testing.T) {
 	h := schema.Handler{
 		FQN:  "example.NoParamHandler",
@@ -296,5 +173,43 @@ func TestHandler_FirstParamReadLine_OmitEmpty(t *testing.T) {
 	}
 	if _, ok := raw["first_param_read_expr"]; ok {
 		t.Error("first_param_read_expr should be omitted (omitempty) when empty")
+	}
+}
+
+// --- WR-04: PaymentSurface.ClusterID omitempty ---
+
+// TestPaymentSurface_ClusterID_OmitEmpty verifies that an empty ClusterID is omitted
+// from JSON (the cartographer spec omits cluster_id because codegraph does not surface
+// community IDs) and that a populated ClusterID round-trips.
+func TestPaymentSurface_ClusterID_OmitEmpty(t *testing.T) {
+	ps := schema.PaymentSurface{
+		Files:      []string{"billing/stripe.go"},
+		Confidence: "extracted",
+		// ClusterID: zero-value ("")
+	}
+	data, err := json.Marshal(ps)
+	if err != nil {
+		t.Fatalf("Marshal PaymentSurface: %v", err)
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("Unmarshal to map: %v", err)
+	}
+	if _, ok := raw["cluster_id"]; ok {
+		t.Error("cluster_id should be omitted (omitempty) when empty")
+	}
+
+	// When set, it must round-trip.
+	ps.ClusterID = "cluster-7"
+	data, err = json.Marshal(ps)
+	if err != nil {
+		t.Fatalf("Marshal PaymentSurface with ClusterID: %v", err)
+	}
+	var ps2 schema.PaymentSurface
+	if err := json.Unmarshal(data, &ps2); err != nil {
+		t.Fatalf("Unmarshal PaymentSurface: %v", err)
+	}
+	if ps2.ClusterID != "cluster-7" {
+		t.Errorf("round-trip ClusterID: got %q, want cluster-7", ps2.ClusterID)
 	}
 }

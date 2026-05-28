@@ -43,9 +43,13 @@
                 "type": "integer",
                 "description": "1-based line number of the handler function declaration."
               },
-              "first_param_read": {
+              "first_param_read_line": {
+                "type": "integer",
+                "description": "1-based line number of the first HTTP parameter read in the handler body (used for taint entry tracing)."
+              },
+              "first_param_read_expr": {
                 "type": "string",
-                "description": "First parameter read expression in the handler body (used for taint entry tracing)."
+                "description": "Expression text of the first HTTP parameter read (e.g. c.Query(\"id\"))."
               }
             }
           },

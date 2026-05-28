@@ -137,7 +137,12 @@ if [ "$CODEGRAPH_OK" = "true" ]; then
   output="$(codegraph index "$TARGET_DIR" 2>&1)"
   if [ $? -ne 0 ]; then
     echo "WARNING: codegraph index failed. Attempting retry after removing .codegraph/" >&2
-    rm -rf "$TARGET_DIR/.codegraph/"
+    if [ -z "$TARGET_DIR" ] || [ "$TARGET_DIR" = "/" ] || [ "${TARGET_DIR#/}" = "$TARGET_DIR" ]; then
+      echo "ERROR: refusing 'rm -rf' — TARGET_DIR is empty, root, or not an absolute path: '$TARGET_DIR'" >&2
+      FAILURES=$((FAILURES+1))
+    else
+      rm -rf "$TARGET_DIR/.codegraph/"
+    fi
 
     output="$(codegraph init "$TARGET_DIR" 2>&1)"
     if [ $? -ne 0 ]; then

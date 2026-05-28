@@ -544,7 +544,7 @@ func TestValidate_H7_Regression_FutureEnvelopeFields(t *testing.T) {
 // when a synthesis agent returns valid SynthesisReport JSON but review-report.json
 // does NOT exist in the workspace, the hook must NOT block. The agent produced
 // correct output; the missing file is an infrastructure condition, not an agent violation.
-// RED: current validate.go always blocks on S1 missing file → this test must FAIL.
+// Regression guard for the W4 S1 soft-fail behavior implemented in validate.go.
 func TestValidate_Synthesis_S1_MissingFile_SoftFail(t *testing.T) {
 	tmpdir := setupWorkspaceTemp(t)
 	prev, _ := os.Getwd()
@@ -552,7 +552,7 @@ func TestValidate_Synthesis_S1_MissingFile_SoftFail(t *testing.T) {
 	defer os.Chdir(prev)
 
 	// Build a valid SynthesisReport that passes S2–S6 invariants.
-	// SchemaVersion maps to the "scma_version" JSON field (typo in spec).
+	// SchemaVersion maps to the "schema_version" JSON field.
 	report := schema.SynthesisReport{
 		SchemaVersion: "review-report/v1",
 		ReviewID:      "test-session-id",
@@ -599,7 +599,6 @@ func TestValidate_Synthesis_S1_MissingFile_SoftFail(t *testing.T) {
 		t.Errorf("Validate returned error: %v", err)
 	}
 	// W4 soft-fail: valid content → no block, even though review-report.json is absent.
-	// RED: current code always blocks on S1 missing file, so stdout will be non-empty.
 	if stdout.Len() > 0 {
 		t.Errorf("W4 soft-fail: expected empty stdout (no block) when content is valid JSON but review-report.json missing, got: %s", stdout.String())
 	}
@@ -608,7 +607,7 @@ func TestValidate_Synthesis_S1_MissingFile_SoftFail(t *testing.T) {
 // TestValidate_TaintVerdict_ErrorMessageContainsPreview verifies W4 error-message format:
 // when a taint-tracer agent returns natural-language content (not JSON), the block reason
 // MUST include "content(first 100):" followed by the first 100 chars of the content.
-// RED: current validate.go/dispatch.go does not add a content preview → this test must FAIL.
+// Regression guard for the W4 content-preview behavior implemented in dispatch.go.
 func TestValidate_TaintVerdict_ErrorMessageContainsPreview(t *testing.T) {
 	tmpdir := setupWorkspaceTemp(t)
 	prev, _ := os.Getwd()
@@ -653,7 +652,6 @@ func TestValidate_TaintVerdict_ErrorMessageContainsPreview(t *testing.T) {
 	}
 	// W4: block reason must contain a content preview so the operator can diagnose
 	// which specific output triggered the block without fetching the full transcript.
-	// RED: current code does not add "content(first 100):" → assertion fails.
 	if !bytes.Contains(stdout.Bytes(), []byte("content(first 100):")) {
 		t.Errorf("W4 error format: expected block reason to contain \"content(first 100):\" preview, got: %s", stdout.String())
 	}

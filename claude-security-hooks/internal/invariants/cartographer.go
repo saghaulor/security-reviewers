@@ -125,7 +125,11 @@ func checkA6(idx *schema.CartographerIndex) []Violation {
 	if !FileExists(CartographerGraphPath) {
 		return []Violation{{Path: CartographerGraphPath, Expected: "exists", Actual: "missing"}}
 	}
-	data, err := os.ReadFile(CartographerGraphPath)
+	resolvedGraphPath, err := ResolveWorkspacePath(CartographerGraphPath)
+	if err != nil {
+		return []Violation{{Path: CartographerGraphPath, Expected: "readable", Actual: err.Error()}}
+	}
+	data, err := os.ReadFile(resolvedGraphPath)
 	if err != nil {
 		return []Violation{{Path: CartographerGraphPath, Expected: "readable", Actual: err.Error()}}
 	}

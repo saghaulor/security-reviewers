@@ -105,7 +105,7 @@ func checkS2(r *schema.SynthesisReport) []Violation {
 	const wantSchema = "review-report/v1"
 	if r.SchemaVersion != wantSchema {
 		out = append(out, Violation{
-			Path:     "scma_version",
+			Path:     "schema_version",
 			Expected: wantSchema,
 			Actual:   r.SchemaVersion,
 		})

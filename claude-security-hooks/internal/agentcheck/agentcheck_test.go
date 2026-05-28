@@ -16,8 +16,10 @@ import (
 const repoRootRel = "../../../"
 
 // tracerAgents are the four agent files subject to the D-12 forbidden-tools check.
-// go-cartographer legitimately has Bash; synthesis legitimately has Write.
-// Only these four must exclude all forbidden tools.
+// go-cartographer legitimately has Bash. Per the D-12 amended policy (Phase 13
+// SC-13-3), tracer agents MAY hold Write in their allowlist so they can persist
+// their own verdict file — but only when the agent body carries the A10-amended
+// scoped-write rule (enforced by TestTracerAgentsWithWriteHaveScopedRule).
 var tracerAgents = []string{
 	"go-taint-tracer",
 	"go-authz-tracer",
@@ -26,12 +28,19 @@ var tracerAgents = []string{
 }
 
 // forbiddenTools lists the tools that D-12 prohibits from tracer agent allowlists.
-var forbiddenTools = []string{"Grep", "Bash", "Edit", "Write"}
+// Write was removed in Phase 13 (SC-13-3): tracers now write their own verdict
+// files under a scoped A10-amended contract. The unscoped tools (Grep, Bash, Edit)
+// remain forbidden because they enable text-search shortcuts and source mutation.
+var forbiddenTools = []string{"Grep", "Bash", "Edit"}
+
+// writeBearingScopedRuleMarker is the text a tracer agent MUST contain when its
+// allowlist includes Write — it documents the A10-amended scoped-write contract
+// (verdict output to exactly one designated file, no other writes, no source edits).
+const writeBearingScopedRuleMarker = "A10-amended"
 
 // TestTracerAgentsExcludeForbiddenTools parses each tracer agent file and asserts
-// that none of the D-12 forbidden tools (Grep, Bash, Edit, Write) appear in
-// their tools: frontmatter field. This test is RED until Wave 1 writes the agent
-// files under .claude/agents/.
+// that none of the D-12 forbidden tools (Grep, Bash, Edit) appear in their tools:
+// frontmatter field.
 func TestTracerAgentsExcludeForbiddenTools(t *testing.T) {
 	agentsDir := filepath.Join(repoRootRel, ".claude", "agents")
 
@@ -42,12 +51,52 @@ func TestTracerAgentsExcludeForbiddenTools(t *testing.T) {
 
 			fm, err := agentcheck.ParseFrontmatter(path)
 			if err != nil {
-				t.Fatalf("ParseFrontmatter(%q): %v — agent file missing or unreadable (expected RED until Wave 1 writes agent files)", path, err)
+				t.Fatalf("ParseFrontmatter(%q): %v — agent file missing or unreadable", path, err)
 			}
 
 			violations := agentcheck.ContainsForbidden(fm.Tools, forbiddenTools)
 			if len(violations) > 0 {
 				t.Errorf("agent %q contains D-12 forbidden tools: %v", agentName, violations)
+			}
+		})
+	}
+}
+
+// TestTracerAgentsWithWriteHaveScopedRule enforces the D-12 amended policy: a tracer
+// agent MAY include Write in its allowlist, but only if its instructions carry the
+// A10-amended scoped-write rule that constrains output to a single designated file.
+// This is the compensating control that replaces the blanket Write prohibition —
+// it fails loudly if Write is ever granted without the accompanying scoped contract.
+func TestTracerAgentsWithWriteHaveScopedRule(t *testing.T) {
+	agentsDir := filepath.Join(repoRootRel, ".claude", "agents")
+
+	for _, agentName := range tracerAgents {
+		agentName := agentName // capture range variable
+		t.Run(agentName, func(t *testing.T) {
+			path := filepath.Join(agentsDir, agentName+".md")
+
+			fm, err := agentcheck.ParseFrontmatter(path)
+			if err != nil {
+				t.Fatalf("ParseFrontmatter(%q): %v", path, err)
+			}
+
+			hasWrite := false
+			for _, tool := range fm.Tools {
+				if tool == "Write" {
+					hasWrite = true
+					break
+				}
+			}
+			if !hasWrite {
+				return // no Write granted → scoped-write rule not required
+			}
+
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("ReadFile(%q): %v", path, err)
+			}
+			if !strings.Contains(string(content), writeBearingScopedRuleMarker) {
+				t.Errorf("agent %q grants Write but is missing the %q scoped-write rule", agentName, writeBearingScopedRuleMarker)
 			}
 		})
 	}

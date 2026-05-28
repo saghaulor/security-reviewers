@@ -42,10 +42,13 @@ func newStrictDecoder(text string) *json.Decoder {
 }
 
 // contentPreview returns up to the first 100 characters of s as a quoted string,
-// suitable for inclusion in block-reason error messages (W4).
+// suitable for inclusion in block-reason error messages (W4). Truncation is on
+// rune boundaries so a multi-byte rune near the cut point is never split into
+// invalid UTF-8.
 func contentPreview(s string) string {
-	if len(s) > 100 {
-		return fmt.Sprintf("%q", s[:100])
+	r := []rune(s)
+	if len(r) > 100 {
+		return fmt.Sprintf("%q", string(r[:100]))
 	}
 	return fmt.Sprintf("%q", s)
 }

@@ -110,7 +110,7 @@ Count findings by:
 {
   "review_id": "uuid",
   "timestamp": "2026-05-20T15:42:30Z",
-  "scma_version": "review-report/v1",
+  "schema_version": "review-report/v1",
   "code_ref": "<propagated from go-index.json, omit if empty>",
   "code_ref_dirty": false,
   "summary": {
@@ -145,7 +145,7 @@ Count findings by:
 
 - `review_id`: The UUID injected by the `/security-review` slash command. Copy verbatim, do NOT generate a new one.
 - `timestamp`: ISO 8601 timestamp of the report generation.
-- `scma_version`: MUST be the literal string `"review-report/v1"`. **CRITICAL NOTE:** This field is intentionally named `scma_version` (NOT `schema_version`) — the Phase 2 validator binary checks for the literal key `scma_version`. Using the corrected spelling `schema_version` would fail validation.
+- `schema_version`: MUST be the literal string `"review-report/v1"`. The validator binary checks for the key `schema_version` (matching the `SchemaVersion` struct tag); emit exactly that key.
 - `code_ref`: Git tree hash propagated from go-index.json. Omit if empty (omitempty).
 - `code_ref_dirty`: Dirty flag propagated from go-index.json.
 - `summary`: Counts of findings by severity and class.
@@ -186,7 +186,7 @@ Emit the final review-report.json as plain JSON in your output (it will be writt
 - `review-report.json` (machine-readable, conforms to schema above)
 - `review-report.md` (human-readable markdown)
 
-**S2 — JSON schema compliance:** `review-report.json` MUST conform to the `review-report/v1` schema. The version field key MUST be `scma_version` (the intentional typo), with value `"review-report/v1"`.
+**S2 — JSON schema compliance:** `review-report.json` MUST conform to the `review-report/v1` schema. The version field key MUST be `schema_version`, with value `"review-report/v1"`.
 
 **S3 — Finding count accuracy:** `summary.total_findings` MUST equal `len(findings)` after deduplication.
 

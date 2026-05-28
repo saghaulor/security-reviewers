@@ -169,7 +169,7 @@ func TestPreflight_InputTooLarge_ClassB(t *testing.T) {
 // when go-oauth-auditor receives a prompt with an unknown field (working_directory), the
 // block reason MUST contain "Expected schema:" followed by a JSON Schema fragment that
 // mentions oauth_locations and additionalProperties:false.
-// RED: current preflight.go only emits the parse error, no schema doc → must FAIL.
+// Regression guard for the W5 D-09 schema-doc injection implemented in preflight.go.
 func TestPreflight_OAuthUnknownField_SchemaDocInError(t *testing.T) {
 	// Prompt with valid oauth_locations but unexpected working_directory field.
 	prompt := `{"oauth_locations": {}, "working_directory": "/tmp/project"}`

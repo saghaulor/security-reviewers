@@ -1,9 +1,32 @@
 package hooks
 
 import (
+	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
+
+// TestContentPreview_UnicodeSafe verifies that contentPreview truncates on rune
+// boundaries, not raw bytes, so a multi-byte rune straddling byte index 100 is not
+// split into invalid UTF-8 in block-reason previews (IN-04).
+func TestContentPreview_UnicodeSafe(t *testing.T) {
+	// 99 ASCII runes, then a 3-byte rune at rune index 99 (byte index 99),
+	// then filler. Byte-slicing at 100 would split the 世 rune.
+	s := strings.Repeat("a", 99) + "世" + strings.Repeat("b", 50)
+
+	quoted := contentPreview(s)
+	preview, err := strconv.Unquote(quoted)
+	if err != nil {
+		t.Fatalf("contentPreview returned an unparseable quoted string %q: %v", quoted, err)
+	}
+	if !utf8.ValidString(preview) {
+		t.Errorf("contentPreview produced invalid UTF-8 (rune split at boundary): %q", quoted)
+	}
+	if !strings.ContainsRune(preview, '世') {
+		t.Errorf("contentPreview should keep the boundary rune 世 intact, got %q", preview)
+	}
+}
 
 // TestDispatch_Cartographer_Happy — A6 would require graphify-out/graph.json fixture setup,
 // so we test a simpler case: valid schema_version passes A2 (sad case below).
@@ -140,7 +163,7 @@ func TestDispatch_InvariantChecker_Sad_MissingFlowName(t *testing.T) {
 
 // TestDispatch_Synthesis_Happy
 func TestDispatch_Synthesis_Happy(t *testing.T) {
-	verdict := `{"review_id":"test","timestamp":"2026-05-19T00:00:00Z","scma_version":"review-report/v1","summary":{"total_findings":0,"by_severity":{},"by_class":{}}}`
+	verdict := `{"review_id":"test","timestamp":"2026-05-19T00:00:00Z","schema_version":"review-report/v1","summary":{"total_findings":0,"by_severity":{},"by_class":{}}}`
 	reasons, err := runAgentValidation("synthesis", verdict, "")
 	if err != nil {
 		t.Fatalf("runAgentValidation: %v", err)
@@ -152,7 +175,7 @@ func TestDispatch_Synthesis_Happy(t *testing.T) {
 
 // TestDispatch_Synthesis_Sad_WrongSchemaVersion
 func TestDispatch_Synthesis_Sad_WrongSchemaVersion(t *testing.T) {
-	verdict := `{"review_id":"test","timestamp":"2026-05-19T00:00:00Z","scma_version":"review-report/v2","summary":{"total_findings":0,"by_severity":{},"by_class":{}}}`
+	verdict := `{"review_id":"test","timestamp":"2026-05-19T00:00:00Z","schema_version":"review-report/v2","summary":{"total_findings":0,"by_severity":{},"by_class":{}}}`
 	reasons, err := runAgentValidation("synthesis", verdict, "")
 	if err != nil {
 		t.Fatalf("runAgentValidation: %v", err)

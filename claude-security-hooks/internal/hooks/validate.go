@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/saghaulor/claude-security-hooks/internal/invariants"
@@ -36,11 +35,11 @@ func Validate(stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	if root == "" {
 		return EmitBlock(stdout, "workspace_root_not_found")
 	}
-	prev, _ := os.Getwd()
-	if err := os.Chdir(root); err != nil {
-		return fmt.Errorf("validate: chdir(%q): %w", root, err)
-	}
-	defer func() { _ = os.Chdir(prev) }()
+	// Resolve workspace-relative paths against root explicitly rather than mutating
+	// the process working directory with os.Chdir, which is process-global state that
+	// would affect every goroutine and relative file operation in the process (WR-05).
+	invariants.SetFSRoot(root)
+	defer invariants.SetFSRoot("")
 
 	verdictText, err := extractTextContent(ev.ToolResponse.Content)
 	if err != nil {
@@ -52,7 +51,7 @@ func Validate(stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	stripped := stripCodeFences(verdictText)
 	// Attempt parse on stripped; if it fails, fall back to raw verdictText.
 	reasons, _ := runAgentValidation(ev.ToolInput.SubagentType, stripped, ev.ToolInput.Prompt)
-	if len(reasons) == 1 && strings.Contains(reasons[0], "verdict parse") {
+	if len(reasons) > 0 && strings.Contains(reasons[0], "verdict parse") {
 		fallback, _ := runAgentValidation(ev.ToolInput.SubagentType, verdictText, ev.ToolInput.Prompt)
 		if len(fallback) > 0 && !strings.Contains(fallback[0], "verdict parse") {
 			reasons = fallback
