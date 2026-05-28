@@ -11,6 +11,13 @@ import (
 
 const stdinCapBytes = 1 << 20 // 1 MB
 
+// Compact JSON Schema summaries for each security agent's input contract.
+// Used in D-09 block reasons to help agents self-correct on schema mismatch (W5).
+const taintInputSchemaDoc = `{"type":"object","required":["source","sink"],"properties":{"source":{"type":"object","required":["file","line","expr","kind"]},"sink":{"type":"object","required":["file","line","expr","kind"]},"max_depth":{"type":"integer"},"semgrep_tier":{"type":"string"}},"additionalProperties":false}`
+const authzInputSchemaDoc = `{"type":"object","required":["routes"],"properties":{"routes":{"type":"array"},"authz_primitives":{"type":"array"},"sensitive_operations":{"type":"array"},"review_session_id":{"type":"string"},"code_ref":{"type":"string"},"code_ref_dirty":{"type":"boolean"}},"additionalProperties":false}`
+const oauthInputSchemaDoc = `{"type":"object","required":["oauth_locations"],"properties":{"oauth_locations":{"type":"object"},"target_profile":{"type":"string","enum":["oauth_2_1","oauth_2_0","oauth_2_0_with_9700_bcp"]},"features_in_use":{"type":"array"},"review_session_id":{"type":"string"},"code_ref":{"type":"string"},"code_ref_dirty":{"type":"boolean"}},"additionalProperties":false}`
+const invariantInputSchemaDoc = `{"type":"object","required":["flow_name","invariants"],"properties":{"flow_name":{"type":"string"},"invariants":{"type":"array","items":{"type":"object","required":["id","statement"]}},"review_session_id":{"type":"string"},"code_ref":{"type":"string"},"code_ref_dirty":{"type":"boolean"}},"additionalProperties":false}`
+
 // Note: envelope parsing uses json.Unmarshal (lenient). See validate.go for rationale.
 
 func Preflight(stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
@@ -45,7 +52,7 @@ func preflightPerAgent(subagentType, promptJSON string) string {
 		dec := json.NewDecoder(strings.NewReader(promptJSON))
 		dec.DisallowUnknownFields()
 		if err := dec.Decode(&in); err != nil {
-			return fmt.Sprintf("D-09: taint input parse: %v", err)
+			return fmt.Sprintf("D-09: taint input parse: %v\nExpected schema: %s", err, taintInputSchemaDoc)
 		}
 	case "go-cartographer":
 		// Cartographer input is the working directory + presence of graphify-out — not a JSON schema.
@@ -57,21 +64,21 @@ func preflightPerAgent(subagentType, promptJSON string) string {
 		dec := json.NewDecoder(strings.NewReader(promptJSON))
 		dec.DisallowUnknownFields()
 		if err := dec.Decode(&in); err != nil {
-			return fmt.Sprintf("D-09: authz input parse: %v", err)
+			return fmt.Sprintf("D-09: authz input parse: %v\nExpected schema: %s", err, authzInputSchemaDoc)
 		}
 	case "go-oauth-auditor":
 		var in schema.OAuthInput
 		dec := json.NewDecoder(strings.NewReader(promptJSON))
 		dec.DisallowUnknownFields()
 		if err := dec.Decode(&in); err != nil {
-			return fmt.Sprintf("D-09: oauth input parse: %v", err)
+			return fmt.Sprintf("D-09: oauth input parse: %v\nExpected schema: %s", err, oauthInputSchemaDoc)
 		}
 	case "invariant-checker":
 		var in schema.InvariantCheckerInput
 		dec := json.NewDecoder(strings.NewReader(promptJSON))
 		dec.DisallowUnknownFields()
 		if err := dec.Decode(&in); err != nil {
-			return fmt.Sprintf("D-09: invariant-checker input parse: %v", err)
+			return fmt.Sprintf("D-09: invariant-checker input parse: %v\nExpected schema: %s", err, invariantInputSchemaDoc)
 		}
 	case "synthesis":
 		// Synthesis input is a directory path string. No JSON parse required.
