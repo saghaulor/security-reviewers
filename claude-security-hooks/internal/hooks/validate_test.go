@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/saghaulor/claude-security-hooks/internal/schema"
 )
 
 // setupWorkspaceTemp creates a temporary workspace directory with .planning marker.
@@ -535,5 +537,124 @@ func TestValidate_H7_Regression_FutureEnvelopeFields(t *testing.T) {
 	}
 	if bytes.Contains(stdout.Bytes(), []byte("H7")) {
 		t.Errorf("H7 block on future envelope fields (regression): %s", stdout.String())
+	}
+}
+
+// TestValidate_Synthesis_S1_MissingFile_SoftFail verifies W4 soft-fail behavior:
+// when a synthesis agent returns valid SynthesisReport JSON but review-report.json
+// does NOT exist in the workspace, the hook must NOT block. The agent produced
+// correct output; the missing file is an infrastructure condition, not an agent violation.
+// RED: current validate.go always blocks on S1 missing file → this test must FAIL.
+func TestValidate_Synthesis_S1_MissingFile_SoftFail(t *testing.T) {
+	tmpdir := setupWorkspaceTemp(t)
+	prev, _ := os.Getwd()
+	os.Chdir(tmpdir)
+	defer os.Chdir(prev)
+
+	// Build a valid SynthesisReport that passes S2–S6 invariants.
+	// SchemaVersion maps to the "scma_version" JSON field (typo in spec).
+	report := schema.SynthesisReport{
+		SchemaVersion: "review-report/v1",
+		ReviewID:      "test-session-id",
+		Summary: schema.SynthesisSummary{
+			TotalFindings: 0,
+			BySeverity:    map[string]int{},
+			ByClass:       map[string]int{},
+		},
+	}
+	innerJSON, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("marshal SynthesisReport: %v", err)
+	}
+	// Double-encode: content is a JSON string whose value is the SynthesisReport JSON.
+	contentBytes, err := json.Marshal(string(innerJSON))
+	if err != nil {
+		t.Fatalf("marshal content string: %v", err)
+	}
+
+	// Do NOT create review-report.json in tmpdir — that is the missing-file condition.
+	ev := PostToolUseEvent{
+		SessionID:      "s1",
+		TranscriptPath: "t1",
+		CWD:            tmpdir,
+		HookEventName:  "PostToolUse",
+		ToolName:       "Task",
+		ToolInput: TaskToolInput{
+			SubagentType: "synthesis",
+			Prompt:       tmpdir,
+		},
+		ToolUseID: "u1",
+		ToolResponse: ToolResponse{
+			Content: json.RawMessage(contentBytes),
+			Type:    "text",
+		},
+	}
+	body, _ := json.Marshal(ev)
+	stdin := bytes.NewReader(body)
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+
+	err = Validate(stdin, stdout, stderr)
+	if err != nil {
+		t.Errorf("Validate returned error: %v", err)
+	}
+	// W4 soft-fail: valid content → no block, even though review-report.json is absent.
+	// RED: current code always blocks on S1 missing file, so stdout will be non-empty.
+	if stdout.Len() > 0 {
+		t.Errorf("W4 soft-fail: expected empty stdout (no block) when content is valid JSON but review-report.json missing, got: %s", stdout.String())
+	}
+}
+
+// TestValidate_TaintVerdict_ErrorMessageContainsPreview verifies W4 error-message format:
+// when a taint-tracer agent returns natural-language content (not JSON), the block reason
+// MUST include "content(first 100):" followed by the first 100 chars of the content.
+// RED: current validate.go/dispatch.go does not add a content preview → this test must FAIL.
+func TestValidate_TaintVerdict_ErrorMessageContainsPreview(t *testing.T) {
+	tmpdir := setupWorkspaceTemp(t)
+	prev, _ := os.Getwd()
+	os.Chdir(tmpdir)
+	defer os.Chdir(prev)
+
+	// Natural-language content >100 chars that is not valid JSON.
+	nlContent := "Analyze the following taint flow: the user input travels from the HTTP request parameter " +
+		"through the service layer and reaches the database query without sanitization."
+	if len(nlContent) <= 100 {
+		t.Fatalf("test setup error: nlContent must be >100 chars, got %d", len(nlContent))
+	}
+	contentBytes, _ := json.Marshal(nlContent)
+
+	ev := PostToolUseEvent{
+		SessionID:      "s1",
+		TranscriptPath: "t1",
+		CWD:            tmpdir,
+		HookEventName:  "PostToolUse",
+		ToolName:       "Task",
+		ToolInput: TaskToolInput{
+			SubagentType: "go-taint-tracer",
+			Prompt:       `{"source":{"file":"a.go","line":1,"expr":"x","kind":"param"},"sink":{"file":"b.go","line":2,"expr":"y","kind":"cmd_exec"},"max_depth":10,"semgrep_tier":"pro"}`,
+		},
+		ToolUseID: "u1",
+		ToolResponse: ToolResponse{
+			Content: json.RawMessage(contentBytes),
+			Type:    "text",
+		},
+	}
+	body, _ := json.Marshal(ev)
+	stdin := bytes.NewReader(body)
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+
+	err := Validate(stdin, stdout, stderr)
+	if err != nil {
+		t.Errorf("Validate returned error: %v", err)
+	}
+	if stdout.Len() == 0 {
+		t.Fatal("expected stdout block for natural-language taint content")
+	}
+	// W4: block reason must contain a content preview so the operator can diagnose
+	// which specific output triggered the block without fetching the full transcript.
+	// RED: current code does not add "content(first 100):" → assertion fails.
+	if !bytes.Contains(stdout.Bytes(), []byte("content(first 100):")) {
+		t.Errorf("W4 error format: expected block reason to contain \"content(first 100):\" preview, got: %s", stdout.String())
 	}
 }
