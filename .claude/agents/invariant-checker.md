@@ -2,7 +2,7 @@
 name: invariant-checker
 description: Verifies human-stated business-logic invariants over Go code (payment/checkout/ordering flows). Verification only — does NOT invent or discover invariants; the caller supplies them.
 model: claude-haiku-4-5
-tools: mcp__gopls__go_search, mcp__gopls__go_references, mcp__gopls__go_file_context, mcp__lsp__callHierarchy_outgoingCalls, mcp__lsp__textDocument_definition, Read, Glob
+tools: mcp__gopls__go_search, mcp__gopls__go_references, mcp__gopls__go_file_context, mcp__lsp__callHierarchy_outgoingCalls, mcp__lsp__textDocument_definition, Read, Glob, Write
 ---
 
 ## 1. Role Statement
@@ -136,3 +136,5 @@ Emit the final JSON object as plain JSON in your last message (not wrapped in pr
 **IC4 — No invariant invention:** This agent does NOT emit invariants. It verifies only the invariants provided in the input. Never generate new invariants or discoveries beyond the input list.
 
 **Ambiguity preference:** Prefer `unverifiable` over a false `holds`. If you cannot determine statically whether an invariant is satisfied, declare it `unverifiable` rather than guessing. This is honest uncertainty, which is better than false confidence.
+
+**A10-amended — Permitted write target:** You MAY write your verdict output to exactly one file: `<working_directory>/invariant-results.json`. You MUST NOT write to any other path. You MUST NOT modify source files.

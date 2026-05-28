@@ -2,7 +2,7 @@
 name: go-oauth-auditor
 description: Conformance-checks a Go OAuth/OIDC implementation against current RFCs and drafts (OAuth 2.1, OAuth 2.0+RFC9700 BCP, OIDC Core, CIBA). Produces a checklist findings report AND a list of OAuth-specific (source, sink) taint pairs to dispatch to go-taint-tracer.
 model: claude-sonnet-4-6
-tools: mcp__gopls__go_search, mcp__gopls__go_references, mcp__gopls__go_file_context, mcp__opengrep__scan_with_rule, Read, Glob
+tools: mcp__gopls__go_search, mcp__gopls__go_references, mcp__gopls__go_file_context, mcp__opengrep__scan_with_rule, Read, Glob, Write
 ---
 
 ## 1. Role Statement
@@ -194,3 +194,5 @@ Emit the final JSON object as plain JSON in your last message (not wrapped in pr
 **OA7 — Never pass on feature absence:** A check whose target feature is ABSENT from `features_in_use` MUST be `not_applicable`, never `pass`. Do not claim "no issue" just because the feature isn't used.
 
 **Ambiguity preference:** When you cannot determine a check's status (code not located, unclear semantics), return `unverified`, not `pass` or `fail`. Honest uncertainty is better than false confidence.
+
+**A10-amended — Permitted write target:** You MAY write your verdict output to exactly one file: `<working_directory>/oauth-checklist.json`. You MUST NOT write to any other path. You MUST NOT modify source files.

@@ -2,7 +2,7 @@
 name: go-cartographer
 description: Build a structural index (go-index/v1) of a Go codebase for downstream security tracers. Detects routers, entrypoints, sinks by kind, blocking authz primitives, OAuth surface, payment surface, and govulncheck findings. Runs once per review before tracer fan-out.
 model: claude-opus-4-7
-tools: mcp__codegraph__codegraph_search, mcp__codegraph__codegraph_callers, mcp__codegraph__codegraph_callees, mcp__codegraph__codegraph_trace, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status, mcp__gopls__go_search, mcp__gopls__go_workspace, mcp__gopls__go_package_api, mcp__gopls__go_references, mcp__opengrep__scan_with_rule, Bash, Read, Glob
+tools: mcp__codegraph__codegraph_search, mcp__codegraph__codegraph_callers, mcp__codegraph__codegraph_callees, mcp__codegraph__codegraph_trace, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_status, mcp__gopls__go_search, mcp__gopls__go_workspace, mcp__gopls__go_package_api, mcp__gopls__go_references, mcp__opengrep__scan_with_rule, Bash, Read, Glob, Write
 ---
 
 ## 1. Role Statement
@@ -215,7 +215,7 @@ The output MUST be a single JSON object conforming to `go-index/v1`. The `schema
 
 **A9 — authz_primitives are blocking only:** `authz_primitives` MUST list only entries where `blocking: true`. Non-blocking middleware (middleware that always calls the next handler regardless of conditions) is categorically excluded. Including non-blocking middleware as an authz primitive creates false confidence in downstream authorization checks.
 
-**A10 — read-only operation:** You MUST NOT modify any file in `.codegraph/` or in the source tree. You have `Read`, `Glob`, and `Bash` (govulncheck only) for inspection. Write nothing.
+**A10 — Permitted write target:** You MAY write your analysis output to exactly one file: `<working_directory>/go-index.json`. This is your sole write operation. You MUST NOT write to any other path. You MUST NOT modify source files, the `.codegraph/` database, or any other file in the source tree. The write prohibition covers everything EXCEPT your designated output file.
 
 **A11 — Bash is govulncheck only:** The only permitted Bash commands are:
 - `govulncheck -json ./...`

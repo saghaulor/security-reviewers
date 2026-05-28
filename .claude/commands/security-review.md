@@ -92,6 +92,8 @@ Run these two commands with TARGET_DIR as the working directory:
 
 ## Step 4: Run cartographer (sequential)
 
+**JSON prompt enforcement:** The `prompt` value for this Task MUST be the JSON object shown below — no prose, no wrapper text, no markdown code fences. The hooks binary's `preflight` hook validates the prompt as JSON before agent dispatch and will block with D-09 if it receives any non-JSON content.
+
 Spawn a Task with agent `go-cartographer` and the following input:
 
 ```json
@@ -114,6 +116,8 @@ Read `TARGET_DIR/go-index.json`. Extract the following fields for use in Step 6:
 - `oauth_locations` — OAuth surface locations
 
 ## Step 6: Run tracers (parallel)
+
+**JSON prompt enforcement:** Each tracer Task's `prompt` value MUST be the exact JSON object shown in each sub-section below — no prose, no wrapper text, no markdown. The preflight hook validates all tracer prompts as JSON and will block the entire fan-out if any prompt is not a valid JSON object. Do not paraphrase or annotate the JSON.
 
 Spawn all four tracer agents simultaneously using parallel Task invocations. Do not wait for one before starting the others. Pass SESSION_ID to each.
 
@@ -226,3 +230,4 @@ Once synthesis completes, report:
 - **Never read old intermediate files** — Step 2 deletes them; there should be nothing to read before the agents create them.
 - **Pass SESSION_ID to every agent** — it is required in all Task inputs (cartographer, all 4 tracers, synthesis).
 - **Parallel tracers** — all four tracer Tasks in Step 6 must be started simultaneously, not sequentially.
+- **All Task prompts are pure JSON** — every Task `prompt` field in this skill must be a valid JSON object matching the exact template shown. Never wrap JSON in prose, markdown, or explanation. The preflight hook enforces this at runtime.

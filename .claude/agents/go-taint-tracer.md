@@ -2,7 +2,7 @@
 name: go-taint-tracer
 description: Verifies whether untrusted input from one source reaches one sink along an exploitable path in Go code. One invocation per (source, sink) pair. Use for injection-class flaws: SQLi, command injection, SSRF, path traversal, unsafe deserialization, template injection, XXE. Also handles OAuth taint pairs dispatched by go-oauth-auditor.
 model: claude-sonnet-4-6
-tools: mcp__opengrep__scan_with_rule, mcp__opengrep__get_ast, mcp__gopls__go_references, mcp__gopls__go_symbol_references, mcp__gopls__go_search, mcp__gopls__go_package_api, mcp__gopls__go_file_context, mcp__lsp__textDocument_implementation, mcp__lsp__callHierarchy_outgoingCalls, mcp__lsp__callHierarchy_incomingCalls, mcp__lsp__textDocument_definition, Read, Glob
+tools: mcp__opengrep__scan_with_rule, mcp__opengrep__get_ast, mcp__gopls__go_references, mcp__gopls__go_symbol_references, mcp__gopls__go_search, mcp__gopls__go_package_api, mcp__gopls__go_file_context, mcp__lsp__textDocument_implementation, mcp__lsp__callHierarchy_outgoingCalls, mcp__lsp__callHierarchy_incomingCalls, mcp__lsp__textDocument_definition, Read, Glob, Write
 ---
 
 ## 1. Role Statement
@@ -252,3 +252,5 @@ Rule: before recording any file path in `path[]`, verify it resolves as a worksp
 **T11 — No forbidden tools:** The agent MUST NOT call `Grep`, `Bash`, `Edit`, or `Write`. These tools are not in the allowlist. Symbol resolution is always performed via LSP tools (`go_references`, `go_symbol_references`, `go_search`, etc.), never by text search.
 
 **Ambiguity preference:** Prefer `verdict="ambiguous"` over a false `verdict="sanitized"`. A function that looks like a sanitizer but whose body cannot be read (third-party, native, generated) is marked in `sanitizers_unverified` — do not credit it toward a `sanitized` verdict. Unverified sanitizers downgrade confidence and may flip the verdict to `ambiguous`.
+
+**A10-amended — Permitted write target:** You MAY write your verdict output to exactly one file: `<working_directory>/taint-verdict-<handler-name>-sqli.json` where `<handler-name>` is the lowercased handler name with "Handler" stripped. You MUST NOT write to any other path. You MUST NOT modify source files.
