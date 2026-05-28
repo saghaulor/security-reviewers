@@ -1,0 +1,7 @@
+{
+  "schema_version": "graphify/v1",
+  "nodes": [
+    {"id": "pkg/main.main", "kind": "func"},
+    {"id": "pkg/handler.Login", "kind": "func"}
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/bin/claude-security-hooks preflight",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/bin/claude-security-hooks validate",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "go-cartographer|go-taint-tracer|go-authz-tracer|go-oauth-auditor|invariant-checker|synthesis",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/bin/claude-security-hooks inject-context",
+            "timeout": 1
+          }
+        ]
+      }
+    ]
+  }
+}

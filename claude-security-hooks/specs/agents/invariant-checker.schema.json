@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "invariant-checker agent input",
+  "type": "object",
+  "required": ["flow_name", "invariants"],
+  "additionalProperties": false,
+  "properties": {
+    "flow_name": {
+      "type": "string",
+      "description": "Name of the security-sensitive flow being verified (e.g. oauth_authorization_code_flow, payment_transfer_flow). Used to scope the invariant check."
+    },
+    "invariants": {
+      "type": "array",
+      "description": "List of invariants to verify. Each invariant is a testable claim about the flow. The invariant-checker does NOT generate invariants (per D16) — the caller supplies them.",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier for this invariant (e.g. INV-01, SCOPE-BIND-01). Used in the verdict to correlate results."
+          },
+          "statement": {
+            "type": "string",
+            "description": "Natural-language statement of the invariant (e.g. 'granted scope must equal the scope from the authorization request, not the consent form submission')."
+          },
+          "anchor_symbols": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional list of fully-qualified Go symbols that anchor this invariant check (helps the agent locate the relevant code)."
+          }
+        }
+      }
+    },
+    "review_session_id": {
+      "type": "string",
+      "description": "UUID identifying the current security review session."
+    },
+    "code_ref": {
+      "type": "string",
+      "description": "Git reference of the code being reviewed."
+    },
+    "code_ref_dirty": {
+      "type": "boolean",
+      "description": "True if the working tree has uncommitted changes at review time."
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "go-authz-tracer agent input",
+  "type": "object",
+  "required": ["routes"],
+  "additionalProperties": false,
+  "properties": {
+    "routes": {
+      "type": "array",
+      "description": "List of HTTP routes to evaluate for authorization coverage. Populated from the cartographer's go-index.json entrypoints.",
+      "items": {
+        "type": "object",
+        "required": ["router", "method", "path", "handler"],
+        "additionalProperties": false,
+        "properties": {
+          "router": {
+            "type": "string",
+            "description": "Router framework that registered this route (e.g. gin, chi, net/http)."
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method (e.g. GET, POST, PUT, DELETE, PATCH)."
+          },
+          "path": {
+            "type": "string",
+            "description": "Route path pattern (e.g. /api/v1/users/:id)."
+          },
+          "handler": {
+            "type": "object",
+            "description": "Handler function information.",
+            "required": ["fqn"],
+            "additionalProperties": false,
+            "properties": {
+              "fqn": {
+                "type": "string",
+                "description": "Fully-qualified name of the handler function (e.g. github.com/example/pkg.HandleFoo)."
+              },
+              "file": {
+                "type": "string",
+                "description": "Workspace-relative path to the handler source file."
+              },
+              "line": {
+                "type": "integer",
+                "description": "1-based line number of the handler function declaration."
+              },
+              "first_param_read_line": {
+                "type": "integer",
+                "description": "1-based line number of the first HTTP parameter read in the handler body (used for taint entry tracing)."
+              },
+              "first_param_read_expr": {
+                "type": "string",
+                "description": "Expression text of the first HTTP parameter read (e.g. c.Query(\"id\"))."
+              }
+            }
+          },
+          "middleware_chain": {
+            "type": "array",
+            "description": "List of middleware applied to this route, in order of execution.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fqn": { "type": "string" },
+                "kind": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "authz_primitives": {
+      "type": "array",
+      "description": "Known authorization primitives discovered by the cartographer (e.g. middleware functions, role-check calls).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fqn": {
+            "type": "string",
+            "description": "Fully-qualified name of the authz primitive."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Kind label (e.g. middleware, role_check, permission_check)."
+          }
+        }
+      }
+    },
+    "sensitive_operations": {
+      "type": "array",
+      "description": "Sensitive operations (e.g. DB writes, admin actions) that must be protected by authorization.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "kind": { "type": "string" }
+        }
+      }
+    },
+    "review_session_id": {
+      "type": "string",
+      "description": "UUID identifying the current security review session."
+    },
+    "code_ref": {
+      "type": "string",
+      "description": "Git reference of the code being reviewed."
+    },
+    "code_ref_dirty": {
+      "type": "boolean",
+      "description": "True if the working tree has uncommitted changes at review time."
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "codegraph": {
+      "type": "stdio",
+      "command": "/home/saghaulor/code/security_reviewer/scripts/codegraph-mcp.sh"
+    },
+    "opengrep": {
+      "type": "stdio",
+      "command": "/home/saghaulor/code/security_reviewer/.claude/hooks/bin/opengrep-mcp",
+      "env": {
+        "SAST_ENGINE": "opengrep"
+      }
+    }
+  }
+}

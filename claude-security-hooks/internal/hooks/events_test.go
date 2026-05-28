@@ -1,0 +1,408 @@
+package hooks_test
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+
+	"github.com/saghaulor/claude-security-hooks/internal/hooks"
+)
+
+func TestPreToolUseEvent_RoundTrip(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "go-taint-tracer",
+			"prompt": "Review this code",
+			"description": "Security review"
+		},
+		"tool_use_id": "tool-123",
+		"permission_mode": "manual",
+		"effort": {"level": "high"}
+	}`
+
+	var event hooks.PreToolUseEvent
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	if event.ToolInput.SubagentType != "go-taint-tracer" {
+		t.Errorf("SubagentType = %q, want 'go-taint-tracer'", event.ToolInput.SubagentType)
+	}
+	if event.CWD != "/home/user/project" {
+		t.Errorf("CWD = %q, want '/home/user/project'", event.CWD)
+	}
+	if event.PermissionMode != "manual" {
+		t.Errorf("PermissionMode = %q, want 'manual'", event.PermissionMode)
+	}
+	if event.Effort.Level != "high" {
+		t.Errorf("Effort.Level = %q, want 'high'", event.Effort.Level)
+	}
+	if event.ToolUseID != "tool-123" {
+		t.Errorf("ToolUseID = %q, want 'tool-123'", event.ToolUseID)
+	}
+}
+
+func TestPreToolUseEvent_RejectsUnknownField(t *testing.T) {
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {"subagent_type": "test", "prompt": "test"},
+		"tool_use_id": "123",
+		"bogus": "unknown field"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err == nil {
+		t.Errorf("Decode with unknown field returned nil error, want error")
+	}
+}
+
+func TestPostToolUseEvent_ContentString(t *testing.T) {
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Task",
+		"tool_input": {"subagent_type": "test", "prompt": "test"},
+		"tool_use_id": "123",
+		"tool_response": {
+			"content": "response text"
+		}
+	}`
+
+	var event hooks.PostToolUseEvent
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	var content string
+	if err := json.Unmarshal(event.ToolResponse.Content, &content); err != nil {
+		t.Fatalf("Unmarshal content failed: %v", err)
+	}
+	if content != "response text" {
+		t.Errorf("content = %q, want 'response text'", content)
+	}
+}
+
+func TestPostToolUseEvent_ContentArray(t *testing.T) {
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Task",
+		"tool_input": {"subagent_type": "test", "prompt": "test"},
+		"tool_use_id": "123",
+		"tool_response": {
+			"content": [{"type": "text", "text": "output"}]
+		}
+	}`
+
+	var event hooks.PostToolUseEvent
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	var content []map[string]interface{}
+	if err := json.Unmarshal(event.ToolResponse.Content, &content); err != nil {
+		t.Fatalf("Unmarshal content array failed: %v", err)
+	}
+	if len(content) != 1 {
+		t.Errorf("content length = %d, want 1", len(content))
+	}
+}
+
+func TestPostToolUseEvent_ToolResponseWithStatus(t *testing.T) {
+	// Claude Code now includes tool_response.status; DisallowUnknownFields must not reject it.
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Task",
+		"tool_input": {"subagent_type": "go-taint-tracer", "prompt": "test"},
+		"tool_use_id": "123",
+		"tool_response": {
+			"content": "verdict output",
+			"status": "success"
+		}
+	}`
+
+	var event hooks.PostToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		t.Fatalf("Decode failed with tool_response.status present: %v", err)
+	}
+	if event.ToolResponse.Status != "success" {
+		t.Errorf("ToolResponse.Status = %q, want 'success'", event.ToolResponse.Status)
+	}
+}
+
+func TestPostToolUseEvent_AgentToolWithTopLevelPrompt(t *testing.T) {
+	// Claude Code Agent tool PostToolUse events include a top-level "prompt" field.
+	// DisallowUnknownFields must not reject it (H7 fix).
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Agent",
+		"tool_input": {"subagent_type": "gsd-executor", "prompt": "do the thing", "description": "Execute plan"},
+		"tool_use_id": "123",
+		"tool_response": {"content": "result", "status": "success"},
+		"prompt": "do the thing"
+	}`
+
+	var event hooks.PostToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		t.Fatalf("Decode failed with top-level prompt (Agent tool): %v", err)
+	}
+	if event.Prompt != "do the thing" {
+		t.Errorf("Prompt = %q, want 'do the thing'", event.Prompt)
+	}
+}
+
+func TestPreToolUseEvent_AgentToolWithTopLevelPrompt(t *testing.T) {
+	// Claude Code Agent tool PreToolUse events may include a top-level "prompt" field.
+	// DisallowUnknownFields must not reject it (H7 fix, symmetric with PostToolUse).
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Agent",
+		"tool_input": {"subagent_type": "gsd-executor", "prompt": "do the thing", "description": "Execute plan"},
+		"tool_use_id": "123",
+		"prompt": "do the thing"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		t.Fatalf("Decode failed with top-level prompt (Agent PreToolUse): %v", err)
+	}
+	if event.Prompt != "do the thing" {
+		t.Errorf("Prompt = %q, want 'do the thing'", event.Prompt)
+	}
+}
+
+func TestSubagentStartEvent_UsesAgentType(t *testing.T) {
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "SubagentStart",
+		"agent_type": "go-taint-tracer",
+		"agent_id": "agent-123",
+		"prompt": "Review this"
+	}`
+
+	var event hooks.SubagentStartEvent
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+
+	if event.AgentType != "go-taint-tracer" {
+		t.Errorf("AgentType = %q, want 'go-taint-tracer'", event.AgentType)
+	}
+}
+
+func TestSubagentStartEvent_RejectsAgentName(t *testing.T) {
+	// Test that agent_name (HAND_OFF stale) is rejected
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "SubagentStart",
+		"agent_name": "go-taint-tracer",
+		"agent_id": "agent-123",
+		"prompt": "Review this"
+	}`
+
+	var event hooks.SubagentStartEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err == nil {
+		t.Errorf("Decode with agent_name returned nil error, want error for unknown field")
+	}
+}
+
+// --- B1: Agent Tool Extra Fields Tests ---
+
+// TestPreToolUseEvent_RunInBackgroundAccepted verifies that the run_in_background field
+// is now accepted and properly decoded (Wave 1: B1 GREEN).
+func TestPreToolUseEvent_RunInBackgroundAccepted(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "go-taint-tracer",
+			"prompt": "Review this code for taint flow issues",
+			"run_in_background": true
+		},
+		"tool_use_id": "tool-123",
+		"permission_mode": "manual"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err != nil {
+		t.Errorf("Decode with run_in_background returned error: %v", err)
+	}
+	if !event.ToolInput.RunInBackground {
+		t.Errorf("ToolInput.RunInBackground = %v, want true", event.ToolInput.RunInBackground)
+	}
+}
+
+// TestPostToolUseEvent_RunInBackgroundAccepted verifies that the run_in_background field
+// in PostToolUse tool_input is now accepted and properly decoded (Wave 1: B1 GREEN).
+func TestPostToolUseEvent_RunInBackgroundAccepted(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "go-taint-tracer",
+			"prompt": "Review this code",
+			"run_in_background": true
+		},
+		"tool_use_id": "tool-123",
+		"tool_response": {
+			"content": "verdict output",
+			"status": "success"
+		}
+	}`
+
+	var event hooks.PostToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err != nil {
+		t.Errorf("Decode with run_in_background returned error: %v", err)
+	}
+	if !event.ToolInput.RunInBackground {
+		t.Errorf("ToolInput.RunInBackground = %v, want true", event.ToolInput.RunInBackground)
+	}
+}
+
+// TestPreToolUseEvent_ModelFieldAccepted verifies that the model field in tool_input
+// is now accepted and properly decoded (Wave 1: B1 GREEN).
+func TestPreToolUseEvent_ModelFieldAccepted(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "synthesis",
+			"prompt": "Synthesize verdicts",
+			"model": "sonnet"
+		},
+		"tool_use_id": "tool-456"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err != nil {
+		t.Errorf("Decode with model field returned error: %v", err)
+	}
+	if event.ToolInput.Model != "sonnet" {
+		t.Errorf("ToolInput.Model = %q, want 'sonnet'", event.ToolInput.Model)
+	}
+}
+
+// TestPostToolUseEvent_ToolResponseWithPrompt documents that the Claude Code harness echoes
+// the original "prompt" inside tool_response for Agent tool calls (H7 fix round 4).
+// Uses DisallowUnknownFields as a schema documentation check — not the production parse path.
+func TestPostToolUseEvent_ToolResponseWithPrompt(t *testing.T) {
+	payload := `{
+		"session_id": "test",
+		"transcript_path": "/path",
+		"cwd": "/home",
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Agent",
+		"tool_input": {"subagent_type": "go-cartographer", "prompt": "do the scan", "description": "Cartograph"},
+		"tool_use_id": "123",
+		"tool_response": {
+			"content": "precondition_failed",
+			"status": "error",
+			"prompt": "do the scan"
+		},
+		"prompt": "do the scan"
+	}`
+
+	var event hooks.PostToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		t.Fatalf("Decode failed with tool_response.prompt present (H7 round-4 regression): %v", err)
+	}
+	if event.ToolResponse.Prompt != "do the scan" {
+		t.Errorf("ToolResponse.Prompt = %q, want 'do the scan'", event.ToolResponse.Prompt)
+	}
+	if event.ToolResponse.Status != "error" {
+		t.Errorf("ToolResponse.Status = %q, want 'error'", event.ToolResponse.Status)
+	}
+}
+
+// TestPreToolUseEvent_IsolationFieldAccepted verifies that the isolation field in tool_input
+// is now accepted and properly decoded (Wave 1: B1 GREEN).
+func TestPreToolUseEvent_IsolationFieldAccepted(t *testing.T) {
+	payload := `{
+		"session_id": "test-session",
+		"transcript_path": "/path/to/transcript",
+		"cwd": "/home/user/project",
+		"hook_event_name": "PreToolUse",
+		"tool_name": "Task",
+		"tool_input": {
+			"subagent_type": "go-cartographer",
+			"prompt": "Discover Go code structure",
+			"isolation": "worktree"
+		},
+		"tool_use_id": "tool-789"
+	}`
+
+	var event hooks.PreToolUseEvent
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&event)
+	if err != nil {
+		t.Errorf("Decode with isolation field returned error: %v", err)
+	}
+	if event.ToolInput.Isolation != "worktree" {
+		t.Errorf("ToolInput.Isolation = %q, want 'worktree'", event.ToolInput.Isolation)
+	}
+}

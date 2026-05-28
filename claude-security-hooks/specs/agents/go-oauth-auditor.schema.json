@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "go-oauth-auditor agent input",
+  "description": "Note: working_directory is NOT a valid field for this agent. OAuth locations are provided from go-index.json, not by path.",
+  "type": "object",
+  "required": ["oauth_locations"],
+  "additionalProperties": false,
+  "properties": {
+    "oauth_locations": {
+      "type": "object",
+      "description": "OAuth/OIDC relevant locations in the codebase, extracted from the cartographer's go-index.json oauth_locations field. This is the primary input — do NOT pass working_directory instead."
+    },
+    "target_profile": {
+      "type": "string",
+      "enum": ["oauth_2_1", "oauth_2_0", "oauth_2_0_with_9700_bcp"],
+      "description": "OAuth spec profile to audit against. oauth_2_1 = OAuth 2.1 draft; oauth_2_0 = RFC 6749/6750; oauth_2_0_with_9700_bcp = OAuth 2.0 + RFC 9700 Best Current Practice."
+    },
+    "features_in_use": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "OAuth features detected in the codebase (e.g. pkce, refresh_tokens, device_flow, ciba). Used to scope which checklist items apply."
+    },
+    "review_session_id": {
+      "type": "string",
+      "description": "UUID identifying the current security review session."
+    },
+    "code_ref": {
+      "type": "string",
+      "description": "Git reference of the code being reviewed."
+    },
+    "code_ref_dirty": {
+      "type": "boolean",
+      "description": "True if the working tree has uncommitted changes at review time."
+    }
+  }
+}

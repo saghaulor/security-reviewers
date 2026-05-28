@@ -1,0 +1,12 @@
+{
+  "review_id": "test-fixture-001",
+  "timestamp": "2026-05-19T00:00:00Z",
+  "schema_version": "review-report/v1",
+  "summary": {
+    "total_findings": 0,
+    "by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0},
+    "by_class": {"injection": 0, "authz": 0, "oauth": 0, "invariant": 0, "vuln_dep": 0}
+  },
+  "findings": [],
+  "deduplication_notes": []
+}
